@@ -1,0 +1,109 @@
+'use client'
+
+import { useRef } from 'react'
+import { motion, useInView } from 'framer-motion'
+import ScrollReveal from '@/components/ui/ScrollReveal'
+import { staggerContainer } from '@/lib/animations'
+
+const testimonials = [
+  {
+    quote: "I sha didn't expect to cry talking to an AI. But SaneSpace just... got it. No judgment, no grammar lesson. Just genuine support.",
+    name: 'Temi A.',
+    sub: '300 Level, UNILAG',
+    before: '😔',
+    after: '🙂',
+    accentColor: 'rgba(10,124,110,0.15)',
+    borderColor: 'rgba(10,124,110,0.2)',
+  },
+  {
+    quote: "The way it understood when I said 'e don do me' — I was shook. It didn't ask me to repeat myself or translate. It just responded with warmth.",
+    name: 'Chidi O.',
+    sub: 'Software Engineer, Lagos',
+    before: '😣',
+    after: '😀',
+    accentColor: 'rgba(108,99,255,0.15)',
+    borderColor: 'rgba(108,99,255,0.25)',
+  },
+  {
+    quote: "I've been on the waiting list for an actual therapist for 3 months. SaneSpace has been holding me down in the meantime. God bless whoever built this.",
+    name: 'Fatima B.',
+    sub: 'Corper, Abuja',
+    before: '😟',
+    after: '🙂',
+    accentColor: 'rgba(10,124,110,0.12)',
+    borderColor: 'rgba(178,223,219,0.35)',
+  },
+]
+
+export default function SocialProof() {
+  const ref = useRef<HTMLDivElement>(null)
+  const inView = useInView(ref, { once: true, margin: '-80px' })
+
+  return (
+    <section className="relative py-24 md:py-32 px-5 overflow-hidden">
+      {/* Deep rich background */}
+      <div className="absolute inset-0 mesh-dark" />
+      {/* Glow orbs */}
+      <div
+        className="absolute top-1/4 left-1/4 w-80 h-80 rounded-full blur-3xl pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(10,124,110,0.25) 0%, transparent 70%)' }}
+      />
+      <div
+        className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full blur-3xl pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(108,99,255,0.2) 0%, transparent 70%)' }}
+      />
+
+      <div className="relative max-w-6xl mx-auto">
+        <ScrollReveal className="text-center mb-14">
+          <span className="inline-block text-xs font-semibold tracking-widest uppercase text-primary-mid mb-4 opacity-80">
+            Real Stories
+          </span>
+          <h2 className="font-heading text-4xl md:text-5xl font-bold text-white">
+            Nigerians are finding their place here
+          </h2>
+        </ScrollReveal>
+
+        <motion.div
+          ref={ref}
+          variants={staggerContainer}
+          initial="hidden"
+          animate={inView ? 'visible' : 'hidden'}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        >
+          {testimonials.map((t, i) => (
+            <motion.div
+              key={t.name}
+              initial={{ opacity: 0, y: 40, scale: 0.95 }}
+              animate={inView ? { opacity: 1, y: 0, scale: 1 } : {}}
+              transition={{ delay: i * 0.15, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              whileHover={{ y: -8, scale: 1.02 }}
+              className="relative rounded-2xl p-6 flex flex-col gap-4 glass-dark hover-lift"
+              style={{ border: `1px solid ${t.borderColor}` }}
+            >
+              {/* Inner accent glow */}
+              <div
+                className="absolute inset-0 rounded-2xl pointer-events-none"
+                style={{ background: `radial-gradient(circle at 20% 20%, ${t.accentColor} 0%, transparent 60%)` }}
+              />
+
+              <div className="flex items-center gap-2 text-base relative">
+                <span className="text-xl">{t.before}</span>
+                <span className="text-primary-mid text-sm">→</span>
+                <span className="text-xl">{t.after}</span>
+              </div>
+
+              <p className="text-white/80 text-sm leading-relaxed flex-1 relative">
+                &ldquo;{t.quote}&rdquo;
+              </p>
+
+              <div className="relative pt-4 border-t border-white/10">
+                <p className="font-semibold text-white text-sm">{t.name}</p>
+                <p className="text-white/40 text-xs">{t.sub}</p>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  )
+}

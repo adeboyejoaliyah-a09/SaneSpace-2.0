@@ -9,7 +9,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import PillChip from '@/components/ui/PillChip'
 import Button from '@/components/ui/Button'
 import { staggerContainer, scaleIn, fadeUp } from '@/lib/animations'
-import { extractEmotionalMemory, mergeMemoryEntries, type StoredUserMemory } from '@/lib/memoryExtraction'
+import { extractEmotionalMemory } from '@/lib/memoryExtraction'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -227,11 +227,8 @@ export default function MoodPage() {
       filtered.unshift(entry)
       localStorage.setItem('sane_mood_entries', JSON.stringify(filtered))
 
-      const existingMemory = JSON.parse(
-        localStorage.getItem('sane_user_memory') ?? '[]',
-      ) as StoredUserMemory[]
       const extraction = extractEmotionalMemory({
-        userId: 'local',
+        userId: 'authenticated-user',
         source: 'mood_log',
         text: journalNote,
         moodEntry: {
@@ -240,12 +237,11 @@ export default function MoodPage() {
           note: journalNote,
         },
       })
-      const updatedMemory = mergeMemoryEntries(
-        existingMemory,
-        extraction.memoriesExtracted,
-        'local',
-      )
-      localStorage.setItem('sane_user_memory', JSON.stringify(updatedMemory))
+      void fetch('/api/memory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memories: extraction.memoriesExtracted }),
+      })
     } catch {}
   }
 

@@ -407,10 +407,10 @@ export default function DashboardPage() {
       const storedConvs = JSON.parse(localStorage.getItem('sane_conversations') ?? '[]') as Conversation[]
       setRealConversations(storedConvs.filter((c) => c.messages.length > 0))
     } catch {}
-    try {
-      const storedUserMemory = JSON.parse(localStorage.getItem('sane_user_memory') ?? '[]') as StoredUserMemory[]
-      setUserMemory(storedUserMemory)
-    } catch {}
+    void fetch('/api/memory', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<{ memories: StoredUserMemory[] }> : null)
+      .then((data) => { if (data) setUserMemory(data.memories) })
+      .catch(() => {})
     const timer = setTimeout(() => setLoading(false), 1000)
     return () => clearTimeout(timer)
   }, [])

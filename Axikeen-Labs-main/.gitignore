@@ -9,6 +9,7 @@ node_modules
 
 # production
 /build
+/data/
 
 # env files — never commit secrets
 .env

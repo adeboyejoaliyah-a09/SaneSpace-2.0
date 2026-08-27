@@ -196,6 +196,8 @@ export default function ProfilePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [memoryEntries, setMemoryEntries] = useState<StoredUserMemory[]>([])
   const [memoryEnabled, setMemoryEnabled] = useState(true)
+  const [editingMemoryId, setEditingMemoryId] = useState<string | null>(null)
+  const [editingMemoryContent, setEditingMemoryContent] = useState('')
 
   const [isEditingPersonal, setIsEditingPersonal] = useState(false)
   const [editName, setEditName] = useState('')
@@ -237,12 +239,15 @@ export default function ProfilePage() {
       }))
     } catch {}
 
-    try {
-      const storedMemory = JSON.parse(localStorage.getItem('sane_user_memory') ?? '[]') as StoredUserMemory[]
-      setMemoryEntries(storedMemory)
-      const disabled = localStorage.getItem('sane_memory_disabled') === 'true'
-      setMemoryEnabled(!disabled)
-    } catch {}
+    void fetch('/api/memory', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<{ enabled: boolean; memories: StoredUserMemory[] }> : null)
+      .then((data) => {
+        if (data) {
+          setMemoryEntries(data.memories)
+          setMemoryEnabled(data.enabled)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   // ── Sync session user ───────────────────────────────────────────────────────
@@ -323,31 +328,40 @@ export default function ProfilePage() {
         .filter((k) => k.startsWith('sane_'))
         .forEach((k) => localStorage.removeItem(k))
     } catch {}
+    await fetch('/api/memory', { method: 'DELETE' })
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/')
   }
 
-  const handleDeleteMemory = (memoryId: string) => {
-    const next = memoryEntries.filter((memory) => memory.id !== memoryId)
-    setMemoryEntries(next)
-    try {
-      localStorage.setItem('sane_user_memory', JSON.stringify(next))
-    } catch {}
+  const handleDeleteMemory = async (memoryId: string) => {
+    const response = await fetch(`/api/memory?id=${encodeURIComponent(memoryId)}`, { method: 'DELETE' })
+    if (response.ok) setMemoryEntries((await response.json() as { memories: StoredUserMemory[] }).memories)
   }
 
-  const handleClearMemory = () => {
-    setMemoryEntries([])
-    try {
-      localStorage.setItem('sane_user_memory', JSON.stringify([]))
-    } catch {}
+  const handleClearMemory = async () => {
+    const response = await fetch('/api/memory', { method: 'DELETE' })
+    if (response.ok) setMemoryEntries([])
   }
 
-  const handleToggleMemory = () => {
+  const handleToggleMemory = async () => {
     const next = !memoryEnabled
-    setMemoryEnabled(next)
-    try {
-      localStorage.setItem('sane_memory_disabled', String(!next))
-    } catch {}
+    const response = await fetch('/api/memory', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: next }),
+    })
+    if (response.ok) setMemoryEnabled(next)
+  }
+
+  const handleSaveMemory = async () => {
+    if (!editingMemoryId || !editingMemoryContent.trim()) return
+    const response = await fetch('/api/memory', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memoryId: editingMemoryId, content: editingMemoryContent }),
+    })
+    if (response.ok) {
+      setMemoryEntries((await response.json() as { memories: StoredUserMemory[] }).memories)
+      setEditingMemoryId(null)
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -571,24 +585,29 @@ export default function ProfilePage() {
 
               <div className="space-y-3 mb-5">
                 {memoryEntries.length > 0 ? (
-                  memoryEntries.slice(0, 4).map((memory) => (
+                  memoryEntries.map((memory) => (
                     <div key={memory.id} className="rounded-xl border border-border bg-surface p-3">
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <span className="inline-flex items-center rounded-full bg-primary-light text-primary text-[10px] font-semibold uppercase tracking-wider px-2 py-1">
                           {memory.memoryType}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteMemory(memory.id)}
-                          className="text-xs text-red-500 hover:text-red-600"
-                        >
-                          Delete
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button type="button" onClick={() => { setEditingMemoryId(memory.id); setEditingMemoryContent(memory.content) }} className="text-xs text-primary hover:text-primary-dark">Edit</button>
+                          <button type="button" onClick={() => void handleDeleteMemory(memory.id)} className="text-xs text-red-500 hover:text-red-600">Delete</button>
+                        </div>
                       </div>
-                      <p className="text-sm text-dark leading-relaxed">{memory.content}</p>
+                      {editingMemoryId === memory.id ? (
+                        <div className="space-y-2">
+                          <textarea value={editingMemoryContent} onChange={(event) => setEditingMemoryContent(event.target.value)} className="w-full rounded-xl border border-border bg-surface p-2 text-sm text-dark" rows={3} />
+                          <div className="flex gap-2">
+                            <Button variant="primary" size="sm" onClick={() => void handleSaveMemory()}>Save</Button>
+                            <Button variant="ghost" size="sm" onClick={() => setEditingMemoryId(null)}>Cancel</Button>
+                          </div>
+                        </div>
+                      ) : <p className="text-sm text-dark leading-relaxed">{memory.content}</p>}
                       <div className="mt-2 flex items-center justify-between text-[10px] text-gray-text">
                         <span>{memory.category}</span>
-                        <span>{Math.round(memory.confidenceScore * 100)}% confidence</span>
+                        <span title={`Created from ${memory.source} and updated as matching patterns recur`}>{Math.round(memory.confidenceScore * 100)}% confidence · Why: {memory.source}</span>
                       </div>
                     </div>
                   ))

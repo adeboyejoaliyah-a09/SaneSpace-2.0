@@ -11,7 +11,7 @@ import ModeTag from '@/components/ui/ModeTag'
 import CrisisStatusIndicator from '@/components/ui/CrisisStatusIndicator'
 import type { Conversation, Message } from '@/lib/types'
 import type { CrisisTier, CrisisAssessment } from '@/lib/crisisDetection'
-import { mergeMemoryEntries, type MemoryExtractionResult, type StoredUserMemory } from '@/lib/memoryExtraction'
+import type { MemoryExtractionResult } from '@/lib/memoryExtraction'
 import type { RiskLevel, RiskResult } from '@/lib/riskClassifier'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -312,21 +312,6 @@ export default function ChatPage() {
 
   // ── Send message ─────────────────────────────────────────────────────────
 
-  const saveMemoryExtraction = (memoryExtraction?: MemoryExtractionResult) => {
-    if (!memoryExtraction || memoryExtraction.memoriesExtracted.length === 0) return
-    try {
-      const existing = JSON.parse(
-        localStorage.getItem('sane_user_memory') ?? '[]',
-      ) as StoredUserMemory[]
-      const updated = mergeMemoryEntries(
-        existing,
-        memoryExtraction.memoriesExtracted,
-        'local',
-      )
-      localStorage.setItem('sane_user_memory', JSON.stringify(updated))
-    } catch {}
-  }
-
   const saveCrisisEvent = (event?: CrisisEventMetadata | null) => {
     if (!event) return
     try {
@@ -413,7 +398,6 @@ export default function ChatPage() {
         setActiveMode(data.detectedMode)
       }
       saveConversation(final)
-      saveMemoryExtraction(data.memoryExtraction)
       saveCrisisEvent(data.crisisEvent)
 
       const tier = (data.crisisAssessment?.tier || 'safe') as CrisisTier

@@ -492,7 +492,7 @@ This helps prevent unnecessary development and keeps the team focused on meaning
 
 # 👥 Team
 
-SaneSpace is being developed under **Axikeen Labs**.
+SaneSpace is being developed under **Aamin Tech**.
 
 The project brings together product, design, frontend, backend, AI, and strategy capabilities.
 

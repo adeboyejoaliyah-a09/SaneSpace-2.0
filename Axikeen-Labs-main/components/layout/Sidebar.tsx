@@ -22,8 +22,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
   { label: 'Chat', href: '/chat', icon: <MessageCircle size={20} /> },
-  { label: 'Voice', href: '/chat/voice', icon: <Mic size={20} /> },
-  { label: 'Mood Check-In', href: '/mood', icon: <Heart size={20} /> },
+  { label: 'Voice Chat', href: '/chat/voice', icon: <Mic size={20} /> },
+  { label: 'Daily Check-In', href: '/mood', icon: <Heart size={20} /> },
   { label: 'Profile', href: '/profile', icon: <User size={20} /> },
 ]
 

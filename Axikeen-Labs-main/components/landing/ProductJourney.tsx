@@ -33,7 +33,7 @@ export default function ProductJourney() {
   const inView = useInView(ref, { once: true, margin: '-80px' })
 
   return (
-    <section className="relative py-24 md:py-32 px-5 overflow-hidden bg-[#F7F9F8]">
+    <section className="relative py-24 md:py-32 px-5 overflow-hidden bg-background">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 h-full w-[1px] bg-gradient-to-b from-transparent via-primary/30 to-transparent" />
 
       <div className="relative max-w-6xl mx-auto">
@@ -62,9 +62,9 @@ export default function ProductJourney() {
                 className="relative group"
               >
                 <div className={`absolute inset-0 rounded-[28px] bg-gradient-to-br ${step.accent} opacity-80`} />
-                <div className="relative glass rounded-[28px] p-6 h-full border border-white/50">
+                <div className="relative glass rounded-[28px] p-6 h-full border border-white/50 dark:border-border">
                   <div className="flex items-center justify-between mb-5">
-                    <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white/80 text-primary shadow-sm">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white/80 dark:bg-surface text-primary shadow-sm">
                       <Icon size={20} />
                     </div>
                     <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-gray-text">{step.name}</span>

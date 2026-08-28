@@ -49,7 +49,7 @@ export default function MoodStrip() {
   return (
     <section className="relative py-20 px-5 overflow-hidden">
       {/* Background */}
-      <div className="absolute inset-0 bg-white" />
+      <div className="absolute inset-0 bg-background" />
       <div
         className="absolute inset-0 pointer-events-none"
         style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(10,124,110,0.05) 0%, transparent 70%)' }}

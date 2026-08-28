@@ -540,8 +540,7 @@ export default function VoicePage() {
   // ── Render ───────────────────────────────────────────────────────────────
   if (!isSupported) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center"
-        style={{ backgroundColor: '#F5F7F5' }}>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-background">
         <span className="text-5xl mb-4">🎙️</span>
         <h2 className="font-heading text-2xl font-bold mb-2" style={{ color: '#0A7C6E' }}>
           Voice not supported
@@ -592,7 +591,7 @@ export default function VoicePage() {
         <h2 className="font-heading text-2xl font-bold mb-2" style={{ color: '#0A7C6E' }}>
           Ready when you are
         </h2>
-        <p className="text-sm mb-1 max-w-xs" style={{ color: '#6B7B7B' }}>
+        <p className="text-sm mb-1 max-w-xs text-gray-text">
           Tap below and allow microphone access to start talking with SaneSpace.
         </p>
 
@@ -613,7 +612,7 @@ export default function VoicePage() {
                 <span className="block text-sm font-medium" style={{ color: '#0A7C6E' }}>
                   {opt.label}
                 </span>
-                <span className="block text-xs" style={{ color: '#6B7B7B' }}>
+                <span className="block text-xs text-gray-text">
                   {opt.sub}
                 </span>
               </button>
@@ -653,8 +652,7 @@ export default function VoicePage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: mounted ? 1 : 0 }}
       transition={{ duration: 0.5 }}
-      className="relative min-h-screen flex flex-col overflow-hidden"
-      style={{ backgroundColor: '#F5F7F5' }}
+      className="relative min-h-screen flex flex-col overflow-hidden bg-background"
     >
       <MeditationFigure />
 

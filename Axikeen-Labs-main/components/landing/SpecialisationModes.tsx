@@ -8,12 +8,12 @@ import ScrollReveal from '@/components/ui/ScrollReveal'
 import { staggerContainer } from '@/lib/animations'
 
 const modes = [
-  { emoji: '🛋️', title: 'Therapy Support', desc: 'CBT & DBT techniques, structured reflection', color: 'rgba(10,124,110,0.08)', border: 'rgba(10,124,110,0.25)' },
+  { emoji: '🧭', title: 'Wellbeing & Reflection', desc: 'Make space to reflect and understand what you need', color: 'rgba(10,124,110,0.08)', border: 'rgba(10,124,110,0.25)' },
   { emoji: '🎯', title: 'Life Coaching', desc: 'Goals, accountability, action plans', color: 'rgba(108,99,255,0.08)', border: 'rgba(108,99,255,0.25)' },
   { emoji: '💬', title: 'Just to Talk', desc: 'No agenda, just a safe ear', color: 'rgba(10,124,110,0.06)', border: 'rgba(178,223,219,0.4)' },
-  { emoji: '📚', title: 'Student Support', desc: 'CGPA stress, hostel life, deadlines', color: 'rgba(245,158,11,0.07)', border: 'rgba(245,158,11,0.25)' },
+  { emoji: '📚', title: 'School & Learning', desc: 'Study, assignments, campus life, and decisions', color: 'rgba(245,158,11,0.07)', border: 'rgba(245,158,11,0.25)' },
   { emoji: '🎮', title: 'Chill / Play', desc: 'Low-pressure, fun, mood boosts', color: 'rgba(34,197,94,0.07)', border: 'rgba(34,197,94,0.2)' },
-  { emoji: '💼', title: 'Work & Career', desc: 'Burnout, ambition, workplace stress', color: 'rgba(59,130,246,0.07)', border: 'rgba(59,130,246,0.2)' },
+  { emoji: '💼', title: 'Career & Work', desc: 'Opportunities, skills, ambition, and workplace choices', color: 'rgba(59,130,246,0.07)', border: 'rgba(59,130,246,0.2)' },
 ]
 
 export default function SpecialisationModes() {
@@ -21,7 +21,7 @@ export default function SpecialisationModes() {
   const inView = useInView(ref, { once: true, margin: '-80px' })
 
   return (
-    <section className="relative py-24 md:py-32 px-5 overflow-hidden bg-white">
+    <section className="relative py-24 md:py-32 px-5 overflow-hidden bg-background">
       {/* Background radial blobs */}
       <div
         className="absolute top-0 right-0 w-96 h-96 blur-3xl pointer-events-none opacity-50"
@@ -35,13 +35,13 @@ export default function SpecialisationModes() {
       <div className="relative max-w-6xl mx-auto">
         <ScrollReveal className="text-center mb-14">
           <span className="inline-block text-xs font-semibold tracking-widest uppercase text-primary mb-4 opacity-80">
-            Your Mode
+            Ways to use SaneSpace
           </span>
           <h2 className="font-heading text-4xl md:text-5xl font-bold text-dark mb-4">
-            Choose how SaneSpace shows up for you
+            Bring whatever life is asking of you
           </h2>
           <p className="text-gray-text text-lg max-w-md mx-auto">
-            Pick a mode that fits where you are right now. Switch anytime.
+            Start with the part of life you want to think through. SaneSpace follows your context.
           </p>
         </ScrollReveal>
 
@@ -91,7 +91,7 @@ export default function SpecialisationModes() {
                   transition-all duration-300 glow-primary"
                 style={{ background: 'linear-gradient(135deg, #0A7C6E 0%, #0d9e8e 50%, #6C63FF 100%)' }}
               >
-                Find your mode →
+                Start your space →
               </motion.button>
             </Link>
           </Magnetic>

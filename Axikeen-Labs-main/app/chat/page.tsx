@@ -115,7 +115,7 @@ export default function ChatPage() {
     try {
       const prefs = JSON.parse(localStorage.getItem('sane_user_preferences') ?? '{}')
       const spec = prefs.specialisation as string | undefined
-      if (spec === 'Therapy Support') setEmptySubtext("I'm here to listen and support you.")
+      if (spec === 'Therapy Support') setEmptySubtext("I'm here to help you think through whatever is on your mind.")
       else if (spec === 'Student Support') setEmptySubtext('CGPA stress? Hostel wahala? Talk to me.')
     } catch {}
 

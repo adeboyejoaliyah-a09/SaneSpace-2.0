@@ -51,6 +51,16 @@ body {
 .dark .border-gray-100 { border-color: rgb(var(--tw-border) / 0.6) !important; }
 .dark .border-gray-200 { border-color: rgb(var(--tw-border)) !important; }
 .dark .text-dark { color: rgb(var(--tw-dark)); }
+.dark .text-gray-400 { color: rgb(var(--tw-gray-text)); }
+.dark .text-gray-500 { color: rgb(var(--tw-gray-text)); }
+.dark .text-gray-600 { color: rgb(var(--tw-dark) / 0.82); }
+.dark .placeholder-gray-400::placeholder { color: rgb(var(--tw-gray-text)); }
+.dark .border-white\/30 { border-color: rgb(var(--tw-border)); }
+.dark .border-white\/40 { border-color: rgb(var(--tw-border)); }
+.dark .border-white\/50 { border-color: rgb(var(--tw-border)); }
+.dark .bg-gray-100 { background-color: rgb(var(--tw-border) / 0.55); }
+.dark .bg-gray-200 { background-color: rgb(var(--tw-border)); }
+.dark .hover\:bg-gray-100:hover { background-color: rgb(var(--tw-border) / 0.7); }
 .dark .shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
 
 /* ── Scrollbar ──────────────────────────────── */

@@ -7,7 +7,7 @@ import { staggerContainer } from '@/lib/animations'
 
 const testimonials = [
   {
-    quote: "I sha didn't expect to cry talking to an AI. But SaneSpace just... got it. No judgment, no grammar lesson. Just genuine support.",
+    quote: "I sha didn't expect an AI to understand the context so quickly. I could explain what was happening and actually think clearly.",
     name: 'Temi A.',
     sub: '300 Level, UNILAG',
     before: '😔',
@@ -16,7 +16,7 @@ const testimonials = [
     borderColor: 'rgba(10,124,110,0.2)',
   },
   {
-    quote: "The way it understood when I said 'e don do me' — I was shook. It didn't ask me to repeat myself or translate. It just responded with warmth.",
+    quote: "The way it understood when I said 'e don do me' — I was shook. I didn't have to stop and translate myself.",
     name: 'Chidi O.',
     sub: 'Software Engineer, Lagos',
     before: '😣',
@@ -25,7 +25,7 @@ const testimonials = [
     borderColor: 'rgba(108,99,255,0.25)',
   },
   {
-    quote: "I've been on the waiting list for an actual therapist for 3 months. SaneSpace has been holding me down in the meantime. God bless whoever built this.",
+    quote: "I use SaneSpace to think through work, family, and the decisions I keep postponing. It feels useful because it remembers the thread.",
     name: 'Fatima B.',
     sub: 'Corper, Abuja',
     before: '😟',
@@ -98,7 +98,7 @@ export default function SocialProof() {
 
               <div className="relative pt-4 border-t border-white/10">
                 <p className="font-semibold text-white text-sm">{t.name}</p>
-                <p className="text-white/40 text-xs">{t.sub}</p>
+                <p className="text-gray-300 dark:text-gray-400 text-xs">{t.sub}</p>
               </div>
             </motion.div>
           ))}

@@ -166,7 +166,7 @@ export default function ArchitecturePage() {
       output: langProfile,
     },
     {
-      title: 'CRISIS CHECK',
+      title: 'SAFETY CHECK',
       icon: Shield,
       iconBg: crisisTier ? CRISIS_ICON_BG[crisisTier] : 'bg-gray-100 text-gray-400',
       output: crisisTier ? CRISIS_LABEL[crisisTier] : 'Awaiting input…',
@@ -184,10 +184,10 @@ export default function ArchitecturePage() {
       output: '4 blocks assembled',
     },
     {
-      title: 'GROQ LLM',
+      title: 'AI PROVIDER',
       icon: Zap,
       iconBg: 'bg-amber-100 text-amber-600',
-      output: `llama-3.3-70b-versatile · ${responseTime !== null ? `${responseTime}ms` : '~400ms'}`,
+      output: `YarnGPT → Groq fallback · ${responseTime !== null ? `${responseTime}ms` : '~400ms'}`,
       pulse: true,
     },
     {
@@ -206,16 +206,16 @@ export default function ArchitecturePage() {
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background text-dark">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border">
         <div className="flex items-center gap-3">
           <Link href="/dashboard" className="flex items-center">
             <span className="font-heading font-bold text-xl text-dark">Sane</span>
             <span className="font-heading font-bold text-xl text-primary">Space</span>
           </Link>
-          <span className="hidden sm:inline text-sm text-gray-400 font-medium border-l border-gray-200 pl-3">
-            AI Architecture
+          <span className="hidden sm:inline text-sm text-gray-text font-medium border-l border-border pl-3">
+            How SaneSpace works
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -232,13 +232,13 @@ export default function ArchitecturePage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-10">
+      <div className="max-w-5xl mx-auto px-4 py-10 mesh-light">
         {/* Title */}
         <div className="text-center mb-10">
           <h1 className="font-heading text-3xl md:text-4xl font-bold text-dark">
             How SaneSpace Thinks
           </h1>
-          <p className="text-gray-text mt-2">A real-time view of the AI reasoning pipeline</p>
+            <p className="text-gray-text mt-2">A real-time view of the context, safety, memory, and response pipeline</p>
         </div>
 
         {/* Live demo input */}
@@ -250,7 +250,7 @@ export default function ArchitecturePage() {
               if (e.key === 'Enter') runPipeline()
             }}
             placeholder="Type a message to see the pipeline activate..."
-            className="flex-1 rounded-full border border-gray-200 px-4 py-2.5 text-sm
+            className="flex-1 rounded-full border border-border bg-surface text-dark px-4 py-2.5 text-sm
               focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
           />
           <button
@@ -274,7 +274,7 @@ export default function ArchitecturePage() {
         </div>
 
         {/* Real output panel */}
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 max-w-2xl mx-auto mb-6">
+        <div className="bg-surface rounded-2xl p-6 border border-border max-w-2xl mx-auto mb-6">
           <p className="text-primary font-medium text-sm mb-2">Groq Response:</p>
           {response ? (
             <>
@@ -293,7 +293,7 @@ export default function ArchitecturePage() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
           {STATS.map((s) => (
-            <div key={s.label} className="bg-white rounded-2xl p-4 border border-gray-100 text-center">
+            <div key={s.label} className="bg-surface rounded-2xl p-4 border border-border text-center">
               <p className="font-heading text-xl font-bold text-primary">{s.value}</p>
               <p className="text-xs text-gray-text mt-1">{s.label}</p>
             </div>
@@ -325,8 +325,8 @@ function PipelineNode({
     <motion.div
       animate={active ? { scale: 1.03 } : { scale: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      className={`bg-white rounded-2xl p-4 flex flex-col items-center text-center w-full md:w-[140px] shrink-0 transition-all duration-300
-        ${active ? 'border-2 border-primary opacity-100' : 'border border-gray-100 opacity-40'}`}
+      className={`bg-surface rounded-2xl p-4 flex flex-col items-center text-center w-full md:w-[140px] shrink-0 transition-all duration-300
+        ${active ? 'border-2 border-primary opacity-100' : 'border border-border opacity-40'}`}
       style={active ? { boxShadow: '0 0 0 4px rgba(10,124,110,0.1)' } : undefined}
     >
       <div

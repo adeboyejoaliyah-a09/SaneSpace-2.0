@@ -24,7 +24,7 @@ export default function ContextSection() {
 
   return (
     <section className="relative py-24 md:py-32 px-5 overflow-hidden">
-      <div className="absolute inset-0 bg-white/60" />
+      <div className="absolute inset-0 bg-white/60 dark:bg-surface/60" />
       <div className="absolute left-1/2 top-20 -translate-x-1/2 w-[640px] h-[640px] rounded-full blur-3xl opacity-40 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(10,124,110,0.18) 0%, transparent 70%)' }} />
 
       <div className="relative max-w-6xl mx-auto">
@@ -48,7 +48,7 @@ export default function ContextSection() {
             transition={{ duration: 0.6 }}
             className="glass rounded-[28px] p-6 md:p-7"
           >
-            <div className="flex items-center justify-between gap-4 pb-5 border-b border-white/40">
+            <div className="flex items-center justify-between gap-4 pb-5 border-b border-white/40 dark:border-border">
               <div>
                 <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-gray-text mb-2">User Context</p>
                 <h3 className="font-heading text-2xl font-semibold text-dark">Your world, in view</h3>
@@ -66,7 +66,7 @@ export default function ContextSection() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
                   transition={{ delay: index * 0.08, duration: 0.4 }}
-                  className="rounded-2xl border border-white/40 bg-white/60 p-4"
+                  className="rounded-2xl border border-white/40 dark:border-border bg-white/60 dark:bg-surface/60 p-4"
                 >
                   <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${card.tint}`}>
                     {card.label}
@@ -77,7 +77,7 @@ export default function ContextSection() {
                       <button
                         key={action}
                         type="button"
-                        className="text-[10px] font-medium rounded-full border border-border bg-white/70 px-2.5 py-1 text-gray-text transition-colors hover:text-primary"
+                        className="text-[10px] font-medium rounded-full border border-border bg-white/70 dark:bg-surface px-2.5 py-1 text-gray-text transition-colors hover:text-primary"
                       >
                         {action}
                       </button>
@@ -110,7 +110,7 @@ export default function ContextSection() {
                       <span>{signal.label}</span>
                       <span className="font-semibold text-dark">{signal.value}%</span>
                     </div>
-                    <div className="h-2 bg-gray-200/80 rounded-full overflow-hidden">
+                    <div className="h-2 bg-gray-200/80 dark:bg-border rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={inView ? { width: `${signal.value}%` } : { width: 0 }}

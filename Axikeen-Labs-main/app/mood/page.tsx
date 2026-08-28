@@ -14,12 +14,11 @@ import { extractEmotionalMemory } from '@/lib/memoryExtraction'
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const MOODS = [
-  { emoji: '😀', label: 'Happy' },
+  { emoji: '😔', label: 'Low' },
+  { emoji: '😕', label: 'Meh' },
+  { emoji: '😐', label: 'Okay' },
   { emoji: '🙂', label: 'Good' },
-  { emoji: '😐', label: 'Neutral' },
-  { emoji: '😔', label: 'Sad' },
-  { emoji: '😣', label: 'Stressed' },
-  { emoji: '😟', label: 'Anxious' },
+  { emoji: '😄', label: 'Great' },
 ]
 
 const TRIGGERS = [
@@ -28,30 +27,28 @@ const TRIGGERS = [
 ]
 
 const MOOD_EMOJI: Record<string, string> = {
-  Happy: '😀', Good: '🙂', Neutral: '😐',
-  Sad: '😔', Stressed: '😣', Anxious: '😟',
+  Low: '😔', Meh: '😕', Okay: '😐', Good: '🙂', Great: '😄',
 }
 
 const AI_INSIGHT: Record<string, string> = {
-  Happy: "You're doing well today 🌿 Note what's working — it becomes part of your resilience map.",
-  Good: "You're doing well today 🌿 Note what's working — it becomes part of your resilience map.",
-  Neutral: "Neutral days are data too. You're building awareness just by checking in.",
-  Sad: "Showing up on hard days takes courage. You're not alone in this.",
-  Stressed: "Stress logged. Would a 4-7-8 breathing exercise help right now?",
-  Anxious: "Anxiety noted. One breath at a time — you're safe right now.",
+  Low: "A low day is worth noticing. You do not have to figure everything out at once.",
+  Meh: "Meh days are data too. A small next step is enough for now.",
+  Okay: "You are checking in with yourself, and that is useful context for today.",
+  Good: "Something is working today. Notice it, and let SaneSpace help you build from there.",
+  Great: "You are in a good place today. What would you like to make space for?",
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getTriggerHeading(mood: string | null) {
-  if (mood === 'Happy' || mood === 'Good') return "What's going well? Pick what fits."
-  if (mood === 'Neutral') return "What's on your mind today?"
-  return "What's weighing on you? Pick all that apply."
+  if (mood === 'Good' || mood === 'Great') return "What's going well? Pick what fits."
+  if (mood === 'Okay' || mood === 'Meh') return "What's on your mind today?"
+  return "What's taking up space today? Pick what fits."
 }
 
 function getJournalPlaceholder(mood: string | null) {
-  if (mood === 'Happy' || mood === 'Good') return "Today I'm grateful for..."
-  if (mood === 'Neutral') return "Today I'm thinking about..."
+  if (mood === 'Good' || mood === 'Great') return "Today I'm grateful for..."
+  if (mood === 'Okay' || mood === 'Meh') return "Today I'm thinking about..."
   return "Today has been hard because..."
 }
 
@@ -377,7 +374,7 @@ export default function MoodPage() {
                       variants={staggerContainer}
                       initial="hidden"
                       animate="visible"
-                      className="grid grid-cols-3 gap-4"
+                      className="grid grid-cols-5 gap-2 sm:gap-3"
                     >
                       {MOODS.map((mood) => (
                         <motion.div
@@ -387,6 +384,9 @@ export default function MoodPage() {
                         >
                           <motion.button
                             type="button"
+                            role="radio"
+                            aria-checked={selectedMood === mood.label}
+                            aria-label={`Feeling ${mood.label}`}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             animate={
@@ -397,8 +397,8 @@ export default function MoodPage() {
                             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                             onClick={() => handleMoodSelect(mood.label)}
                             className={`
-                              w-[88px] h-[88px] rounded-full border-2 flex items-center
-                              justify-center text-4xl leading-none focus:outline-none
+                              w-full min-w-0 h-[76px] sm:h-[88px] rounded-xl border-2 flex items-center
+                              justify-center text-3xl sm:text-4xl leading-none focus:outline-none
                               focus:ring-2 focus:ring-primary transition-colors duration-200
                               ${selectedMood === mood.label
                                 ? 'border-primary bg-primary-light'
@@ -406,7 +406,7 @@ export default function MoodPage() {
                               }
                             `}
                           >
-                            {mood.emoji}
+                            <span aria-hidden="true">{mood.emoji}</span>
                           </motion.button>
                           <span
                             className={`text-sm ${

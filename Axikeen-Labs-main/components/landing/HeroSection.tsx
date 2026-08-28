@@ -20,7 +20,7 @@ const HeroOrb = dynamic(() => import('@/components/three/HeroOrb'), {
   ),
 })
 
-const TRUST_ITEMS = ['Free to start', 'Voice-first', 'Private & confidential']
+const TRUST_ITEMS = ['Free to start', 'Text and voice conversations', 'Memory with your consent']
 
 export default function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -67,7 +67,7 @@ export default function HeroSection() {
               className="inline-flex items-center gap-1.5 border border-primary/40 text-primary text-xs font-semibold
                 rounded-full px-4 py-1.5 mb-6 glass-primary"
             >
-              🇳🇬 Built for Nigerians
+              Your personal AI companion
             </motion.span>
 
             {/* H1 */}
@@ -77,9 +77,9 @@ export default function HeroSection() {
               transition={{ delay: 0.2, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
               className="font-heading text-5xl md:text-6xl xl:text-7xl font-bold text-dark leading-[1.06] mb-5"
             >
-              Welcome back.
+              What would you like
               <br />
-              What&apos;s up?
+              to figure out today?
               <br />
               <span
                 className="text-primary relative inline-block"
@@ -102,9 +102,8 @@ export default function HeroSection() {
               transition={{ delay: 0.35, duration: 0.6 }}
               className="text-gray-text text-lg max-w-md leading-relaxed mb-8"
             >
-              SaneSpace is the space that is there for you — a voice-aware, memory-aware
-              companion for school, work, relationships, and life pressure. It listens,
-              adapts, and remembers what matters, with your consent.
+              SaneSpace understands your context, remembers what matters with your consent,
+              and helps you navigate school, work, relationships, decisions, and everyday life.
             </motion.p>
 
             {/* Buttons */}
@@ -190,7 +189,7 @@ export default function HeroSection() {
                     </div>
                   </div>
                   <span className="glass-primary text-primary text-xs rounded-full px-2.5 py-1 font-semibold border border-primary/20 shrink-0">
-                    🫂 Listening
+                    🤝 Companion
                   </span>
                 </div>
 
@@ -201,18 +200,18 @@ export default function HeroSection() {
                       className="text-white text-sm rounded-3xl rounded-br-sm px-3.5 py-2.5 max-w-[85%] leading-relaxed"
                       style={{ background: 'linear-gradient(135deg, #0A7C6E, #0d9e8e)' }}
                     >
-                      Abeg I just dey stress, e don do me today
+                      I need to think through a big decision today
                     </div>
                   </div>
                   <div className="flex justify-start">
-                    <div className="bg-white/70 text-gray-600 text-sm rounded-3xl rounded-bl-sm px-3.5 py-2.5 max-w-[85%] leading-relaxed backdrop-blur-sm">
-                      I hear you. E no easy at all. Wetin dey happen exactly?
+                    <div className="bg-white/70 dark:bg-surface/80 text-gray-600 dark:text-dark text-sm rounded-3xl rounded-bl-sm px-3.5 py-2.5 max-w-[85%] leading-relaxed backdrop-blur-sm">
+                      I’m here. Let’s take it one piece at a time. What feels most important?
                     </div>
                   </div>
                 </div>
 
                 {/* Decorative input bar */}
-                <div className="flex items-center gap-2 mx-4 mb-4 bg-white/50 backdrop-blur-sm rounded-full px-4 py-2.5 border border-white/40">
+                <div className="flex items-center gap-2 mx-4 mb-4 bg-white/50 dark:bg-surface/70 backdrop-blur-sm rounded-full px-4 py-2.5 border border-white/40 dark:border-border">
                   <span className="text-gray-400 text-sm flex-1">Talk to me...</span>
                   <Mic size={15} className="text-primary shrink-0" />
                 </div>

@@ -15,6 +15,8 @@ import { Mood } from '@/lib/types'
 import type { Conversation } from '@/lib/types'
 import type { CrisisTier } from '@/lib/crisisDetection'
 import type { StoredUserMemory } from '@/lib/memoryExtraction'
+import MoodCheckIn, { type DailyMood } from '@/components/dashboard/MoodCheckIn'
+import LifeNavigation from '@/components/dashboard/LifeNavigation'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -41,6 +43,14 @@ const SUBTEXT_BY_SPEC: Record<string, string> = {
   'Just to Talk': "I'm here whenever you need me.",
   'Chill / Play': 'Good vibes only today ✨',
   'Work & Career': "Let's make today count.",
+}
+
+const AREA_PROMPTS: Record<string, string> = {
+  School: 'I want to think through something related to school.',
+  Career: 'I want to think through something related to my career.',
+  Relationships: 'I want to think through something related to my relationships.',
+  Finances: 'I want to think through a financial decision.',
+  'Personal life': 'I want help navigating something in my personal life.',
 }
 
 const LANG_EMOJI: Record<string, string> = {
@@ -476,6 +486,11 @@ export default function DashboardPage() {
   const conversations = realConversations
   const recommendations = GENERIC_TIPS
 
+  const openContextualChat = (context: string) => {
+    try { localStorage.setItem('sane_prefilled_message', context) } catch {}
+    router.push('/chat')
+  }
+
   // Real week-over-week trend — only shown when there's enough data to compute it honestly
   const loggedDays = chartEntries.filter((e) => e.mood)
   let moodTrendLabel: string | null = null
@@ -545,7 +560,36 @@ export default function DashboardPage() {
                 </div>
 
                 {/* ══════════════════════════════════════════
-                    SECTION 2 — QUICK ACTIONS
+                    SECTION 2 — COMPANION HERO
+                ══════════════════════════════════════════ */}
+                <motion.section
+                  variants={fadeUp}
+                  className="relative overflow-hidden rounded-2xl p-7 sm:p-9 text-white"
+                  style={{ background: 'linear-gradient(135deg, #0A7C6E, #116b75 55%, #354a83)' }}
+                  aria-labelledby="companion-heading"
+                >
+                  <div className="relative z-10 max-w-2xl">
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/70 font-semibold">Your personal AI companion</p>
+                    <h2 id="companion-heading" className="font-heading text-3xl sm:text-4xl font-bold leading-tight mt-3">What&apos;s on your mind?</h2>
+                    <p className="text-white/80 mt-3 max-w-lg">Talk through a decision, make a plan, untangle a situation, or simply start wherever you are.</p>
+                    <div className="flex flex-wrap gap-3 mt-6">
+                      <Button variant="outline" size="md" onClick={() => openContextualChat('I want to talk through what is on my mind today.')} className="!bg-white !text-primary !border-white"><MessageCircle size={16} /> Start a conversation</Button>
+                      <Button variant="ghost" size="md" onClick={() => router.push('/chat/voice')} className="!text-white hover:!bg-white/10">🎙️ Use voice</Button>
+                    </div>
+                  </div>
+                  <div className="absolute -right-8 -bottom-16 w-56 h-56 rounded-full border border-white/20" aria-hidden="true" />
+                  <div className="absolute right-12 top-10 w-20 h-20 rounded-full border border-white/15" aria-hidden="true" />
+                </motion.section>
+
+                <MoodCheckIn onTalk={(mood: DailyMood) => openContextualChat(`I checked in as feeling ${mood} today. I want to talk about it.`)} />
+
+                {/* ══════════════════════════════════════════
+                    SECTION 3 — LIFE NAVIGATION
+                ══════════════════════════════════════════ */}
+                <LifeNavigation onSelect={(area) => openContextualChat(AREA_PROMPTS[area] ?? `I want help with ${area}.`)} />
+
+                {/* ══════════════════════════════════════════
+                    SECTION 4 — QUICK ACTIONS
                 ══════════════════════════════════════════ */}
                 <motion.div
                   variants={staggerContainer}
@@ -612,10 +656,10 @@ export default function DashboardPage() {
                     <Heart size={36} className="text-primary" />
                     <div>
                       <p className="font-heading text-xl font-bold text-dark leading-tight">
-                        Log Today&apos;s Mood
+                        Check in with yourself
                       </p>
                       <p className="text-gray-text text-sm mt-0.5">
-                        Track how you&apos;re feeling
+                        Notice where you are today
                       </p>
                       <p className="text-primary text-sm font-medium mt-3 underline-offset-2 hover:underline">
                         Check in →
@@ -625,15 +669,15 @@ export default function DashboardPage() {
                 </motion.div>
 
                 {/* ══════════════════════════════════════════
-                    SECTION 3 — EMOTIONAL STORY PANELS
+                    SECTION 5 — RECENT CONTEXT
                 ══════════════════════════════════════════ */}
                 <div>
                   <ScrollReveal variant="fadeUp" className="mb-5">
                     <h2 className="font-heading text-2xl font-bold text-dark">
-                      Your Emotional Story
+                      Your Recent Context
                     </h2>
                     <p className="text-gray-text text-sm mt-1">
-                      Patterns SaneSpace has noticed about you
+                      Helpful signals from your conversations and check-ins
                     </p>
                   </ScrollReveal>
 
@@ -768,13 +812,13 @@ export default function DashboardPage() {
                 </div>
 
                 {/* ══════════════════════════════════════════
-                    MOOD TREND CHART
+                    RECENT CHECK-INS
                 ══════════════════════════════════════════ */}
                 <ScrollReveal variant="fadeUp">
                   <div className="glass rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="font-heading font-bold text-dark text-lg">
-                        Mood This Week
+                        Your Recent Check-ins
                       </h2>
                       <span className="text-xs text-gray-400 font-medium">{dateRange}</span>
                     </div>

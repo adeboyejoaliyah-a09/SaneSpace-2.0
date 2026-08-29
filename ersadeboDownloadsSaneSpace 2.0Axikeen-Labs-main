@@ -1,0 +1,37 @@
+warning: in the working copy of 'Axikeen-Labs-main/app/api/chat/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/app/api/memory/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/app/api/voice/tts/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/app/chat/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/app/chat/voice/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/app/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/components/landing/ContextSection.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/components/landing/FinalCTA.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/components/landing/HeroSection.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/components/landing/HowItWorks.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/components/landing/LandingFooter.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/components/landing/ProductJourney.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/components/landing/SocialProof.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/components/landing/SpecialisationModes.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/components/layout/Navbar.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/components/ui/ModeTag.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/lib/auth.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Axikeen-Labs-main/package.json', LF will be replaced by CRLF the next time Git touches it
+ Axikeen-Labs-main/app/api/chat/route.ts            |   81 [32m+[m[31m-[m
+ Axikeen-Labs-main/app/api/memory/route.ts          |   53 [32m+[m[31m-[m
+ Axikeen-Labs-main/app/api/voice/tts/route.ts       |   39 [32m+[m[31m-[m
+ Axikeen-Labs-main/app/chat/page.tsx                |  797 [32m++++++[m[31m--------[m
+ Axikeen-Labs-main/app/chat/voice/page.tsx          | 1163 [32m+++++++++[m[31m-----------[m
+ Axikeen-Labs-main/app/page.tsx                     |    2 [32m+[m
+ .../components/landing/ContextSection.tsx          |   19 [32m+[m[31m-[m
+ Axikeen-Labs-main/components/landing/FinalCTA.tsx  |   25 [32m+[m[31m-[m
+ .../components/landing/HeroSection.tsx             |   75 [32m+[m[31m-[m
+ .../components/landing/HowItWorks.tsx              |   31 [32m+[m[31m-[m
+ .../components/landing/LandingFooter.tsx           |   44 [32m+[m[31m-[m
+ .../components/landing/ProductJourney.tsx          |   10 [32m+[m[31m-[m
+ .../components/landing/SocialProof.tsx             |   37 [32m+[m[31m-[m
+ .../components/landing/SpecialisationModes.tsx     |   54 [32m+[m[31m-[m
+ Axikeen-Labs-main/components/layout/Navbar.tsx     |    7 [32m+[m[31m-[m
+ Axikeen-Labs-main/components/ui/ModeTag.tsx        |   38 [32m+[m[31m-[m
+ Axikeen-Labs-main/lib/auth.ts                      |   62 [32m+[m[31m-[m
+ Axikeen-Labs-main/package.json                     |    1 [32m+[m
+ 18 files changed, 1187 insertions(+), 1351 deletions(-)

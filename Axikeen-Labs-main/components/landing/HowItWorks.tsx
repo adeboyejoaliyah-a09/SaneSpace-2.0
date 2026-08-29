@@ -10,8 +10,6 @@ const features = [
   {
     icon: Brain,
     iconColor: 'text-primary',
-    glowColor: 'rgba(10,124,110,0.15)',
-    borderColor: 'rgba(10,124,110,0.2)',
     title: 'Remembers what matters',
     body: 'With your consent, SaneSpace keeps structured personal context so relevant conversations can feel less like starting from scratch.',
     tag: 'You control your memory',
@@ -20,8 +18,6 @@ const features = [
   {
     icon: Sparkles,
     iconColor: 'text-accent',
-    glowColor: 'rgba(108,99,255,0.12)',
-    borderColor: 'rgba(108,99,255,0.2)',
     title: 'Adapts to the moment',
     body: 'Talk through a decision, make a plan, explore an idea, or simply be heard. SaneSpace adjusts its support to the conversation.',
     tag: 'Context before the task',
@@ -30,8 +26,6 @@ const features = [
   {
     icon: Globe,
     iconColor: 'text-primary',
-    glowColor: 'rgba(10,124,110,0.12)',
-    borderColor: 'rgba(178,223,219,0.4)',
     title: 'Understands your world',
     body: 'SaneSpace works with Nigerian English, Pidgin, student language, and cultural context so you can communicate naturally.',
     tag: 'Language and cultural intelligence',
@@ -45,16 +39,6 @@ export default function HowItWorks() {
 
   return (
     <section id="how-it-works" className="relative py-24 md:py-32 px-5 overflow-hidden mesh-light">
-      {/* Background accent blobs */}
-      <div
-        className="absolute top-20 left-1/4 w-64 h-64 rounded-full blur-3xl pointer-events-none opacity-40"
-        style={{ background: 'radial-gradient(circle, rgba(108,99,255,0.15) 0%, transparent 70%)' }}
-      />
-      <div
-        className="absolute bottom-10 right-1/4 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-30"
-        style={{ background: 'radial-gradient(circle, rgba(10,124,110,0.12) 0%, transparent 70%)' }}
-      />
-
       <div className="relative max-w-6xl mx-auto">
         <ScrollReveal className="text-center mb-16">
           <span className="inline-block text-xs font-semibold tracking-widest uppercase text-primary mb-4 opacity-80">
@@ -85,25 +69,16 @@ export default function HowItWorks() {
                 transition={{ delay: i * 0.15, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                 whileHover={{ y: -8, rotateX: 2, rotateY: -2 }}
                 style={{ transformStyle: 'preserve-3d', perspective: 1000 }}
-                className="group relative glass rounded-2xl p-7 flex flex-col border hover-lift cursor-default"
+                className="group relative glass rounded-lg p-7 flex flex-col border border-border hover-lift cursor-default"
               >
-                {/* Subtle background glow on hover */}
-                <div
-                  className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                  style={{ background: `radial-gradient(circle at 30% 30%, ${f.glowColor} 0%, transparent 70%)` }}
-                />
-
                 {/* Icon */}
-                <div
-                  className="relative w-12 h-12 rounded-xl flex items-center justify-center mb-5 shrink-0 glass"
-                  style={{ boxShadow: `0 0 20px ${f.glowColor}` }}
-                >
+                <div className="relative w-12 h-12 rounded-lg flex items-center justify-center mb-5 shrink-0 border border-border bg-surface">
                   <Icon size={24} className={f.iconColor} />
                 </div>
 
                 <h3 className="font-heading text-xl font-bold text-dark mb-3 relative">{f.title}</h3>
                 <p className="text-gray-text text-sm leading-relaxed flex-1 relative">{f.body}</p>
-                <div className="mt-5 pt-4 border-t border-white/50 relative">
+                <div className="mt-5 pt-4 border-t border-border relative">
                   <span className={`text-xs font-semibold px-3 py-1 rounded-full ${f.tagColor}`}>
                     {f.tag}
                   </span>

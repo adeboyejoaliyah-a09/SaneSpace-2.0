@@ -2,42 +2,26 @@ import Link from 'next/link'
 
 export default function LandingFooter() {
   return (
-    <footer className="relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-dark dark:bg-black" />
-      {/* Subtle glow line at top */}
-      <div
-        className="absolute top-0 left-0 right-0 h-px"
-        style={{ background: 'linear-gradient(90deg, transparent, rgba(10,124,110,0.6), rgba(108,99,255,0.4), transparent)' }}
-      />
-      {/* Radial glow */}
-      <div
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-32 blur-3xl pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse, rgba(10,124,110,0.12) 0%, transparent 70%)' }}
-      />
-
+    <footer className="relative overflow-hidden border-t border-border bg-surface">
       <div className="relative max-w-6xl mx-auto px-5 py-14">
         <div className="flex flex-col md:flex-row gap-10 md:gap-8">
 
           {/* Left — logo + tagline */}
           <div className="flex-1">
             <div className="flex items-center mb-3">
-              <span className="font-heading font-bold text-xl text-gray-100 dark:text-white">Sane</span>
-              <span
-                className="font-heading font-bold text-xl text-primary"
-                style={{ textShadow: '0 0 20px rgba(10,124,110,0.5)' }}
-              >
+              <span className="font-heading font-bold text-xl text-dark">Sane</span>
+              <span className="font-heading font-bold text-xl text-primary">
                 Space
               </span>
             </div>
-            <p className="text-sm text-gray-300 dark:text-gray-400 max-w-xs leading-relaxed">
-             Your AI companion — built to understand your world, remember what matters, and be there when you need it.
+            <p className="text-sm text-gray-text max-w-xs leading-relaxed">
+             Your AI companion, built to understand your world, remember what matters with your consent, and be there when you need it.
             </p>
           </div>
 
           {/* Middle — links */}
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-300 dark:text-gray-400 mb-4">Links</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-dark mb-4">Links</h4>
             <div className="flex flex-col gap-2.5">
               {[
                 { label: 'About', href: '#about' },
@@ -48,7 +32,7 @@ export default function LandingFooter() {
                 <Link
                   key={l.href}
                   href={l.href}
-                  className="text-sm text-gray-300 dark:text-gray-400 hover:text-white transition-colors duration-200"
+                  className="text-sm text-gray-text hover:text-primary transition-colors duration-200"
                 >
                   {l.label}
                 </Link>
@@ -58,14 +42,11 @@ export default function LandingFooter() {
 
           {/* Right — hackathon credit */}
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-300 dark:text-gray-400 mb-4">About</h4>
-            <p className="text-sm text-gray-300 dark:text-gray-400 leading-relaxed">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-dark mb-4">About</h4>
+            <p className="text-sm text-gray-text leading-relaxed">
               Built for the
               <br />
-              <span
-                className="text-primary font-semibold"
-                style={{ textShadow: '0 0 12px rgba(10,124,110,0.4)' }}
-              >
+              <span className="text-primary font-semibold">
                 Everyone
               </span>
             </p>
@@ -74,10 +55,9 @@ export default function LandingFooter() {
 
         {/* Bottom bar */}
         <div
-          className="mt-10 pt-6 border-t text-center"
-          style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+          className="mt-10 pt-6 border-t border-border text-center"
         >
-          <p className="text-xs text-gray-400 dark:text-gray-500">© 2025 SaneSpace. All Rights Reserved.</p>
+          <p className="text-xs text-gray-text">© 2026 SaneSpace. All rights reserved.</p>
         </div>
       </div>
     </footer>

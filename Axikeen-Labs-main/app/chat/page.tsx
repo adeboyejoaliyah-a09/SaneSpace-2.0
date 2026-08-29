@@ -1,35 +1,25 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSaneUser } from '@/hooks/useSaneUser'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Mic, ArrowUp, MessageCircle, Plus, ChevronLeft } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Loader2, Mic, PanelLeft, Plus, RotateCcw } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
-import ChatBubble from '@/components/ui/ChatBubble'
-import ModeTag from '@/components/ui/ModeTag'
 import CrisisStatusIndicator from '@/components/ui/CrisisStatusIndicator'
+import ModeTag from '@/components/ui/ModeTag'
+import {
+  ChatComposer,
+  ChatMessage,
+  CompanionGreeting,
+  CompanionIndicator,
+  CompanionStatus,
+  companionModeOptions,
+} from '@/components/ui/Companion'
+import { useSaneUser } from '@/hooks/useSaneUser'
 import type { Conversation, Message } from '@/lib/types'
 import type { CrisisTier, CrisisAssessment } from '@/lib/crisisDetection'
 import type { MemoryExtractionResult } from '@/lib/memoryExtraction'
 import type { RiskLevel, RiskResult } from '@/lib/riskClassifier'
-
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-const MODE_PILLS = [
-  { id: 'listening', label: '🫂 Listening' },
-  { id: 'coach', label: '🎯 Coach Me' },
-  { id: 'explorer', label: "🔍 Let's Explore" },
-  { id: 'companion', label: '☀️ Just Chat' },
-] as const
-
-const SUGGESTIONS = [
-  "I've been feeling overwhelmed lately",
-  'I need help managing my stress',
-  'Just want to talk',
-]
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 type AdaptiveMode = 'listening' | 'coach' | 'explorer' | 'companion' | 'care'
 
@@ -42,83 +32,84 @@ type CrisisEventMetadata = {
   createdAt: string
 }
 
-function toAdaptiveMode(s: string): AdaptiveMode {
-  const valid: AdaptiveMode[] = ['listening', 'coach', 'explorer', 'companion', 'care']
-  return (valid as string[]).includes(s) ? (s as AdaptiveMode) : 'listening'
+const SUGGESTIONS = [
+  'Help me plan my week',
+  'I need to think through a decision',
+  'Help me get unstuck',
+]
+
+const VALID_MODES: AdaptiveMode[] = ['listening', 'coach', 'explorer', 'companion', 'care']
+
+function toAdaptiveMode(value: string): AdaptiveMode {
+  return (VALID_MODES as string[]).includes(value) ? (value as AdaptiveMode) : 'listening'
 }
 
 function getDateLabel(iso: string): string {
-  const d = new Date(iso)
+  const date = new Date(iso)
   const today = new Date()
   const yesterday = new Date()
   yesterday.setDate(yesterday.getDate() - 1)
-  if (d.toDateString() === today.toDateString()) return 'Today'
-  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+  if (date.toDateString() === today.toDateString()) return 'Today'
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday'
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function formatConvDate(iso: string): string {
-  const d = new Date(iso)
-  const diff = Math.floor((Date.now() - d.getTime()) / 86400000)
+  const date = new Date(iso)
+  const diff = Math.floor((Date.now() - date.getTime()) / 86400000)
   if (diff === 0) return 'Today'
   if (diff === 1) return 'Yesterday'
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function groupByDate(msgs: Message[]) {
+function groupByDate(messages: Message[]) {
   const groups: { label: string; messages: Message[] }[] = []
   let currentKey = ''
-  for (const m of msgs) {
-    const key = new Date(m.timestamp).toDateString()
+
+  messages.forEach((message) => {
+    const key = new Date(message.timestamp).toDateString()
     if (key !== currentKey) {
       currentKey = key
-      groups.push({ label: getDateLabel(m.timestamp), messages: [m] })
+      groups.push({ label: getDateLabel(message.timestamp), messages: [message] })
     } else {
-      groups[groups.length - 1].messages.push(m)
+      groups[groups.length - 1].messages.push(message)
     }
-  }
+  })
+
   return groups
 }
 
-function generateTitle(msgs: Message[]): string {
-  const first = msgs.find((m) => m.sender === 'user')
+function generateTitle(messages: Message[]): string {
+  const first = messages.find((message) => message.sender === 'user')
   if (!first) return 'New conversation'
-  const c = first.content.trim()
-  return c.length > 40 ? c.slice(0, 40) + '…' : c
+  const content = first.content.trim()
+  return content.length > 48 ? `${content.slice(0, 48)}...` : content
 }
-
-// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function ChatPage() {
   const router = useRouter()
   const { user } = useSaneUser()
 
   const [conversations, setConversations] = useState<Conversation[]>([])
-  const [activeConvId, setActiveConvId] = useState<string>('')
+  const [activeConvId, setActiveConvId] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [activeMode, setActiveMode] = useState<string>('listening')
+  const [activeMode, setActiveMode] = useState<AdaptiveMode>('listening')
   const [showMobileConvs, setShowMobileConvs] = useState(false)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState('New conversation')
-  const [emptySubtext, setEmptySubtext] = useState('Talk to me about anything on your mind.')
   const [crisisTier, setCrisisTier] = useState<CrisisTier>('safe')
   const [hardStop, setHardStop] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [lastFailedText, setLastFailedText] = useState('')
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
 
-  // ── Mount: load conversations + prefs ────────────────────────────────────
   useEffect(() => {
-    try {
-      const prefs = JSON.parse(localStorage.getItem('sane_user_preferences') ?? '{}')
-      const spec = prefs.specialisation as string | undefined
-      if (spec === 'Therapy Support') setEmptySubtext("I'm here to help you think through whatever is on your mind.")
-      else if (spec === 'Student Support') setEmptySubtext('CGPA stress? Hostel wahala? Talk to me.')
-    } catch {}
-
     try {
       const storedTier = localStorage.getItem('sane_crisis_tier')
       if (storedTier === 'safe' || storedTier === 'monitor' || storedTier === 'escalate' || storedTier === 'stop') {
@@ -139,9 +130,9 @@ export default function ChatPage() {
         }
       }
     } catch {}
-    createDefaultConversation()
 
-    // Read pre-filled message from mood page
+    createConversation(true)
+
     try {
       const prefilled = localStorage.getItem('sane_prefilled_message')
       if (prefilled) {
@@ -151,34 +142,28 @@ export default function ChatPage() {
     } catch {}
   }, [])
 
-  // ── Auto-scroll ──────────────────────────────────────────────────────────
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [messages, isLoading])
 
-  // ── Auto-grow textarea ───────────────────────────────────────────────────
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-      textareaRef.current.style.height =
-        Math.min(textareaRef.current.scrollHeight, 120) + 'px'
-    }
+    if (!textareaRef.current) return
+    textareaRef.current.style.height = 'auto'
+    textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 144)}px`
   }, [input])
 
-  // ── Focus title input when editing ──────────────────────────────────────
   useEffect(() => {
     if (isEditingTitle) titleInputRef.current?.focus()
   }, [isEditingTitle])
 
-  // ── Sync title when active conv changes ─────────────────────────────────
   useEffect(() => {
-    const conv = conversations.find((c) => c.id === activeConvId)
+    const conv = conversations.find((conversation) => conversation.id === activeConvId)
     if (conv) setTitleValue(conv.title)
   }, [activeConvId, conversations])
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
+  const firstName = user?.firstName || null
 
-  const createDefaultConversation = () => {
+  const createConversation = (replace = false) => {
     const id = crypto.randomUUID()
     const conv: Conversation = {
       id,
@@ -188,63 +173,51 @@ export default function ChatPage() {
       createdAt: new Date().toISOString(),
       messages: [],
     }
+
     try {
-      localStorage.setItem('sane_conversations', JSON.stringify([conv]))
-    } catch {}
-    setConversations([conv])
+      const stored: Conversation[] = replace ? [] : JSON.parse(localStorage.getItem('sane_conversations') ?? '[]')
+      const next = [conv, ...stored]
+      localStorage.setItem('sane_conversations', JSON.stringify(next))
+      setConversations(next)
+    } catch {
+      setConversations([conv])
+    }
+
     setActiveConvId(id)
+    setMessages([])
     setTitleValue('New conversation')
+    setErrorMessage('')
+    setLastFailedText('')
+    setShowMobileConvs(false)
   }
 
-  const saveConversation = (msgs: Message[], convId = activeConvId) => {
+  const saveConversation = (nextMessages: Message[], convId = activeConvId) => {
     try {
-      const stored: Conversation[] = JSON.parse(
-        localStorage.getItem('sane_conversations') ?? '[]',
-      )
-      const idx = stored.findIndex((c) => c.id === convId)
+      const stored: Conversation[] = JSON.parse(localStorage.getItem('sane_conversations') ?? '[]')
+      const idx = stored.findIndex((conversation) => conversation.id === convId)
       const updated: Conversation = {
         id: convId,
         userId: 'local',
-        title: generateTitle(msgs),
+        title: generateTitle(nextMessages),
         mode: 'text',
         createdAt: stored[idx]?.createdAt ?? new Date().toISOString(),
-        messages: msgs,
+        messages: nextMessages,
       }
+
       if (idx >= 0) stored[idx] = updated
       else stored.unshift(updated)
+
       localStorage.setItem('sane_conversations', JSON.stringify(stored))
       setConversations([...stored])
     } catch {}
   }
 
-  const newConversation = () => {
-    const id = crypto.randomUUID()
-    const conv: Conversation = {
-      id,
-      userId: 'local',
-      title: 'New conversation',
-      mode: 'text',
-      createdAt: new Date().toISOString(),
-      messages: [],
-    }
-    try {
-      const stored: Conversation[] = JSON.parse(
-        localStorage.getItem('sane_conversations') ?? '[]',
-      )
-      stored.unshift(conv)
-      localStorage.setItem('sane_conversations', JSON.stringify(stored))
-      setConversations(stored)
-    } catch {}
-    setActiveConvId(id)
-    setMessages([])
-    setTitleValue('New conversation')
-    setShowMobileConvs(false)
-  }
-
-  const loadConversation = (conv: Conversation) => {
-    setActiveConvId(conv.id)
-    setMessages(conv.messages)
-    setTitleValue(conv.title)
+  const loadConversation = (conversation: Conversation) => {
+    setActiveConvId(conversation.id)
+    setMessages(conversation.messages)
+    setTitleValue(conversation.title)
+    setErrorMessage('')
+    setLastFailedText('')
     setShowMobileConvs(false)
   }
 
@@ -252,106 +225,64 @@ export default function ChatPage() {
     setIsEditingTitle(false)
     const title = titleValue.trim() || 'New conversation'
     setTitleValue(title)
+
     try {
-      const stored: Conversation[] = JSON.parse(
-        localStorage.getItem('sane_conversations') ?? '[]',
-      )
-      const updated = stored.map((c) => (c.id === activeConvId ? { ...c, title } : c))
+      const stored: Conversation[] = JSON.parse(localStorage.getItem('sane_conversations') ?? '[]')
+      const updated = stored.map((conversation) => (
+        conversation.id === activeConvId ? { ...conversation, title } : conversation
+      ))
       localStorage.setItem('sane_conversations', JSON.stringify(updated))
       setConversations(updated)
     } catch {}
   }
 
-  // ── Memory confidence tracking ───────────────────────────────────────────
-
   const updateMemoryConfidence = (userMessage: string) => {
     const patterns = [
-      { key: 'academic',
-        label: 'Academic stress',
-        keywords: ['exam', 'cgpa', 'assignment', 'lecture',
-                   'carry-over', 'school', 'test'] },
-      { key: 'financial',
-        label: 'Financial pressure',
-        keywords: ['money', 'broke', 'fees', 'allowance',
-                   'feeding', 'cash'] },
-      { key: 'relationship',
-        label: 'Relationship stress',
-        keywords: ['boyfriend', 'girlfriend', 'family',
-                   'friend', 'mum', 'dad'] },
-      { key: 'work',
-        label: 'Work pressure',
-        keywords: ['work', 'boss', 'job', 'office',
-                   'deadline', 'career'] },
-      { key: 'selfworth',
-        label: 'Self-worth',
-        keywords: ['not good enough', 'failure', 'useless',
-                   'why am i', 'hate myself'] },
+      { key: 'academic', label: 'Academic stress', keywords: ['exam', 'cgpa', 'assignment', 'lecture', 'carry-over', 'school', 'test'] },
+      { key: 'financial', label: 'Financial pressure', keywords: ['money', 'broke', 'fees', 'allowance', 'feeding', 'cash'] },
+      { key: 'relationship', label: 'Relationship stress', keywords: ['boyfriend', 'girlfriend', 'family', 'friend', 'mum', 'dad'] },
+      { key: 'work', label: 'Work pressure', keywords: ['work', 'boss', 'job', 'office', 'deadline', 'career'] },
+      { key: 'selfworth', label: 'Self-worth', keywords: ['not good enough', 'failure', 'useless', 'why am i', 'hate myself'] },
     ]
 
     const msg = userMessage.toLowerCase()
 
     try {
-      const existing = JSON.parse(
-        localStorage.getItem('sane_memory_confidence') || '{}',
-      )
-
-      patterns.forEach((p) => {
-        const hit = p.keywords.some((k) => msg.includes(k))
-        if (hit) {
-          existing[p.key] = {
-            label: p.label,
-            score: Math.min((existing[p.key]?.score || 30) + 8, 95),
+      const existing = JSON.parse(localStorage.getItem('sane_memory_confidence') || '{}')
+      patterns.forEach((pattern) => {
+        if (pattern.keywords.some((keyword) => msg.includes(keyword))) {
+          existing[pattern.key] = {
+            label: pattern.label,
+            score: Math.min((existing[pattern.key]?.score || 30) + 8, 95),
             lastSeen: new Date().toISOString(),
           }
         }
       })
-
       localStorage.setItem('sane_memory_confidence', JSON.stringify(existing))
     } catch {}
   }
 
-  // ── Send message ─────────────────────────────────────────────────────────
-
   const saveCrisisEvent = (event?: CrisisEventMetadata | null) => {
     if (!event) return
+
     try {
-      const existing = JSON.parse(
-        localStorage.getItem('sane_crisis_events') ?? '[]',
-      ) as CrisisEventMetadata[]
-      localStorage.setItem(
-        'sane_crisis_events',
-        JSON.stringify([event, ...existing].slice(0, 20)),
-      )
+      const existing = JSON.parse(localStorage.getItem('sane_crisis_events') ?? '[]') as CrisisEventMetadata[]
+      localStorage.setItem('sane_crisis_events', JSON.stringify([event, ...existing].slice(0, 20)))
     } catch {}
   }
 
-  const sendMessage = async (overrideText?: string) => {
-    const text = (overrideText ?? input).trim()
-    if (!text || isLoading || hardStop) return
-
-    const userMsg: Message = {
-      id: crypto.randomUUID(),
-      conversationId: activeConvId,
-      sender: 'user',
-      content: text,
-      adaptiveMode: toAdaptiveMode(activeMode),
-      timestamp: new Date().toISOString(),
-    }
-
-    const updated = [...messages, userMsg]
-    setMessages(updated)
-    updateMemoryConfidence(text)
-    setInput('')
+  const requestAIResponse = async (nextMessages: Message[], textForRetry: string) => {
     setIsLoading(true)
+    setErrorMessage('')
+    setLastFailedText('')
 
     try {
       const prefs = JSON.parse(localStorage.getItem('sane_user_preferences') ?? '{}')
-
-      const res = await fetch('/api/chat', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: updated,
+          messages: nextMessages,
           specialisation: prefs.specialisation ?? '',
           languageProfile: prefs.languageProfile ?? 'Neutral / International',
           activeMode,
@@ -359,8 +290,8 @@ export default function ChatPage() {
         }),
       })
 
-      const data = await res.json() as {
-        message: string
+      const data = await response.json().catch(() => ({})) as {
+        message?: string
         detectedMode?: string
         selectedMode?: string
         reasoning?: Message['reasoning']
@@ -376,6 +307,10 @@ export default function ChatPage() {
         memoryExtraction?: MemoryExtractionResult
       }
 
+      if (!response.ok || !data.message) {
+        throw new Error(data.message || 'Unable to connect to SaneSpace right now.')
+      }
+
       const aiMsg: Message = {
         id: crypto.randomUUID(),
         conversationId: activeConvId,
@@ -386,51 +321,67 @@ export default function ChatPage() {
         reasoning: data.reasoning || null,
         riskLevel: data.riskLevel,
         riskScore: data.riskScore,
-        showHumanHandoff:
-          data.showHumanHandoff ?? (data.riskLevel === 'high' || data.riskLevel === 'critical'),
+        showHumanHandoff: data.showHumanHandoff ?? (data.riskLevel === 'high' || data.riskLevel === 'critical'),
         responseType: data.responseType,
         memoryExtraction: data.memoryExtraction,
       }
 
-      const final = [...updated, aiMsg]
-      setMessages(final)
-      if (data.detectedMode && data.detectedMode !== activeMode) {
-        setActiveMode(data.detectedMode)
-      }
-      saveConversation(final)
+      const finalMessages = [...nextMessages, aiMsg]
+      setMessages(finalMessages)
+      saveConversation(finalMessages)
       saveCrisisEvent(data.crisisEvent)
+
+      if (data.detectedMode && data.detectedMode !== activeMode) {
+        setActiveMode(toAdaptiveMode(data.detectedMode))
+      }
 
       const tier = (data.crisisAssessment?.tier || 'safe') as CrisisTier
       setCrisisTier(tier)
       try {
         localStorage.setItem('sane_crisis_tier', tier)
       } catch {}
+
       if (data.hardStop) setHardStop(true)
-    } catch {
-      const errMsg: Message = {
-        id: crypto.randomUUID(),
-        conversationId: activeConvId,
-        sender: 'ai',
-        content: "I'm having trouble connecting right now. Please try again.",
-        adaptiveMode: toAdaptiveMode(activeMode),
-        timestamp: new Date().toISOString(),
-      }
-      setMessages((prev) => [...prev, errMsg])
+    } catch (error) {
+      const fallback = error instanceof Error ? error.message : 'Unable to connect to SaneSpace right now.'
+      setErrorMessage(fallback)
+      setLastFailedText(textForRetry)
     } finally {
       setIsLoading(false)
     }
   }
 
-  // ── Derived ──────────────────────────────────────────────────────────────
-  const firstName = user?.firstName || null
+  const sendMessage = async (overrideText?: string) => {
+    const text = (overrideText ?? input).trim()
+    if (!text || isLoading || hardStop) return
+
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      conversationId: activeConvId,
+      sender: 'user',
+      content: text,
+      adaptiveMode: activeMode,
+      timestamp: new Date().toISOString(),
+    }
+
+    const nextMessages = [...messages, userMsg]
+    setMessages(nextMessages)
+    updateMemoryConfidence(text)
+    setInput('')
+    await requestAIResponse(nextMessages, text)
+  }
+
+  const retryLastMessage = async () => {
+    if (!lastFailedText || isLoading || hardStop) return
+    await requestAIResponse(messages, lastFailedText)
+  }
+
   const messageGroups = groupByDate(messages)
 
-  // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-screen overflow-hidden mesh-light">
+    <div className="flex h-screen overflow-hidden bg-bg-base text-dark">
       <Sidebar userName={firstName || user?.fullName || 'User'} />
 
-      {/* ── Mobile conversation drawer ── */}
       <AnimatePresence>
         {showMobileConvs && (
           <motion.div
@@ -444,294 +395,224 @@ export default function ChatPage() {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="w-72 bg-surface h-full shadow-2xl flex flex-col"
+              className="flex h-full w-72 flex-col border-r border-border bg-surface shadow-2xl"
             >
               <ConversationPanel
                 conversations={conversations}
                 activeConvId={activeConvId}
                 onLoad={loadConversation}
-                onNew={newConversation}
+                onNew={() => createConversation()}
               />
             </motion.div>
-            <div className="flex-1 bg-black/30" onClick={() => setShowMobileConvs(false)} />
+            <button
+              type="button"
+              aria-label="Close conversations"
+              className="flex-1 bg-dark/40"
+              onClick={() => setShowMobileConvs(false)}
+            />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── Main: offset for sidebar ── */}
-      <div className="flex flex-1 md:ml-64 h-full overflow-hidden">
-
-        {/* ── Desktop conversation panel ── */}
-        <div className="hidden md:flex flex-col w-64 shrink-0 border-r border-border bg-surface h-full">
+      <div className="flex h-full min-w-0 flex-1 md:ml-64">
+        <aside className="hidden h-full w-72 shrink-0 border-r border-border bg-surface md:flex md:flex-col">
           <ConversationPanel
             conversations={conversations}
             activeConvId={activeConvId}
             onLoad={loadConversation}
-            onNew={newConversation}
+            onNew={() => createConversation()}
           />
-        </div>
+        </aside>
 
-        {/* ── Active chat panel ── */}
-        <div className="flex-1 flex flex-col min-w-0 h-full">
-
-          {/* Top bar */}
-          <div className="shrink-0 bg-surface border-b border-border px-4 py-3">
-            <div className="flex items-center gap-3">
-              {/* Mobile back button */}
+        <main className="flex h-full min-w-0 flex-1 flex-col">
+          <header className="shrink-0 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur">
+            <div className="mx-auto flex max-w-5xl items-center gap-3">
               <button
-                className="md:hidden mr-1 text-gray-400 hover:text-primary transition-colors"
+                type="button"
+                aria-label="Show conversations"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-gray-text transition hover:bg-primary-light hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary md:hidden"
                 onClick={() => setShowMobileConvs(true)}
               >
-                <ChevronLeft size={20} />
+                <PanelLeft size={20} />
               </button>
 
-              {/* Editable title */}
-              {isEditingTitle ? (
-                <input
-                  ref={titleInputRef}
-                  value={titleValue}
-                  onChange={(e) => setTitleValue(e.target.value)}
-                  onBlur={handleTitleSave}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleTitleSave()
-                    if (e.key === 'Escape') setIsEditingTitle(false)
-                  }}
-                  className="flex-1 text-sm font-medium text-dark bg-surface border border-primary-mid
-                    rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary min-w-0"
-                />
-              ) : (
-                <button
-                  onClick={() => setIsEditingTitle(true)}
-                  className="flex-1 text-sm font-medium text-dark text-left truncate hover:text-primary transition-colors min-w-0"
-                >
-                  {titleValue}
-                </button>
-              )}
-
-              {/* Mode controls */}
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="hidden sm:block">
-                  <CrisisStatusIndicator tier={crisisTier} />
-                </div>
-                <ModeTag mode={toAdaptiveMode(activeMode)} />
-                <div className="hidden sm:flex items-center gap-1.5">
-                  {MODE_PILLS.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => setActiveMode(p.id)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all
-                        ${activeMode === p.id
-                          ? 'bg-primary text-white'
-                          : 'border border-border text-gray-text hover:border-primary-mid'
-                        }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-                {/* Voice mode button */}
-                <button
-                  onClick={() => router.push('/chat/voice')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-primary
-                    text-primary text-xs font-medium hover:bg-primary-light transition-colors shrink-0"
-                >
-                  <Mic size={13} />
-                  Voice
-                </button>
+              <div className="min-w-0 flex-1">
+                {isEditingTitle ? (
+                  <input
+                    ref={titleInputRef}
+                    value={titleValue}
+                    onChange={(event) => setTitleValue(event.target.value)}
+                    onBlur={handleTitleSave}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') handleTitleSave()
+                      if (event.key === 'Escape') setIsEditingTitle(false)
+                    }}
+                    aria-label="Conversation title"
+                    className="w-full rounded-lg border border-primary-mid bg-surface px-3 py-2 text-sm font-semibold text-dark focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingTitle(true)}
+                    className="block max-w-full truncate rounded-md text-left text-sm font-semibold text-dark transition hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    {titleValue}
+                  </button>
+                )}
+                <CompanionIndicator state={isLoading ? 'thinking' : 'idle'} label={messages.length === 0 ? "What's on your mind?" : 'Conversation stays in context'} />
               </div>
+
+              <div className="hidden items-center gap-2 lg:flex">
+                <CrisisStatusIndicator tier={crisisTier} />
+                <ModeTag mode={activeMode} />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => router.push('/chat/voice')}
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-primary transition hover:border-primary/50 hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <Mic size={16} />
+                <span className="hidden sm:inline">Voice</span>
+              </button>
             </div>
 
-            {/* Mobile mode pills */}
-            <div className="sm:hidden flex gap-1.5 mt-2 overflow-x-auto pb-0.5 scrollbar-hide">
-              {MODE_PILLS.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setActiveMode(p.id)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all shrink-0
-                    ${activeMode === p.id
-                      ? 'bg-primary text-white'
-                      : 'border border-gray-200 text-gray-text'
+            <div className="mx-auto mt-3 flex max-w-5xl gap-2 overflow-x-auto pb-1">
+              {companionModeOptions.map((option) => {
+                const Icon = option.icon
+                const isActive = activeMode === option.id
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setActiveMode(option.id)}
+                    className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary ${
+                      isActive
+                        ? 'border-primary bg-primary text-white'
+                        : 'border-border bg-surface text-gray-text hover:border-primary/50 hover:bg-primary-light hover:text-primary'
                     }`}
-                >
-                  {p.label}
-                </button>
-              ))}
+                    aria-pressed={isActive}
+                  >
+                    <Icon size={14} />
+                    {option.label}
+                  </button>
+                )
+              })}
             </div>
-          </div>
+          </header>
 
-          {/* Messages area */}
-          <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+          <section className="flex-1 overflow-y-auto px-4 py-5 md:px-6" aria-live="polite">
             {messages.length === 0 ? (
-              /* ── Empty state ── */
-              <div className="h-full flex flex-col items-center justify-center text-center px-4">
-                <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-4">
-                  <MessageCircle size={28} className="text-white" />
-                </div>
-                <h2 className="font-heading text-xl font-bold text-dark mb-2">
-                  Start a conversation
-                </h2>
-                <p className="text-gray-text text-sm mb-7 max-w-xs">{emptySubtext}</p>
-                <div className="flex flex-col gap-2 w-full max-w-xs">
-                  {SUGGESTIONS.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => sendMessage(s)}
-                      className="text-sm text-primary border border-primary-mid bg-primary-light
-                        rounded-full px-4 py-2.5 hover:bg-primary hover:text-white transition-all"
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <CompanionGreeting name={firstName} suggestions={SUGGESTIONS} onSuggestion={sendMessage} />
             ) : (
-              /* ── Messages with date separators ── */
-              <div className="space-y-1">
+              <div className="mx-auto flex max-w-4xl flex-col gap-6">
                 {messageGroups.map((group) => (
-                  <div key={group.label}>
-                    {/* Date separator */}
-                    <div className="flex items-center gap-3 my-5">
-                      <div className="flex-1 h-px bg-border" />
-                      <span className="text-xs text-gray-400 font-medium">{group.label}</span>
-                      <div className="flex-1 h-px bg-border" />
+                  <div key={group.label} className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-xs font-medium text-gray-text">{group.label}</span>
+                      <div className="h-px flex-1 bg-border" />
                     </div>
-
-                    <AnimatePresence initial={false}>
-                      {group.messages.map((msg, i) => (
-                        <motion.div
-                          key={msg.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, ease: 'easeOut' as const }}
-                          className="mb-2"
-                        >
-                          <ChatBubble
-                            message={msg}
-                            isLatest={
-                              i === group.messages.length - 1 &&
-                              !isLoading
-                            }
-                          />
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
+                    {group.messages.map((message) => (
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.22 }}
+                      >
+                        <ChatMessage message={message} />
+                      </motion.div>
+                    ))}
                   </div>
                 ))}
 
-                {/* Typing indicator */}
                 {isLoading && (
-                  <motion.div
-                    key="loading"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="mb-2"
-                  >
-                    <ChatBubble
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                    <ChatMessage
+                      isLatest
                       message={{
                         id: '__loading__',
                         conversationId: activeConvId,
                         sender: 'ai',
                         content: '',
-                        adaptiveMode: toAdaptiveMode(activeMode),
+                        adaptiveMode: activeMode,
                         timestamp: new Date().toISOString(),
                       }}
-                      isLatest={true}
                     />
                   </motion.div>
                 )}
               </div>
             )}
             <div ref={messagesEndRef} />
-          </div>
+          </section>
 
-          {/* Input area */}
-          <div className="shrink-0 border-t border-border bg-surface px-4 py-3">
-            {/* Hard stop safety banner */}
-            <AnimatePresence>
-              {hardStop && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="overflow-hidden"
-                >
-                  <div className="bg-red-500 text-white text-sm rounded-xl px-4 py-3 mb-2 flex flex-col sm:flex-row items-center justify-between gap-2">
-                    <p>
-                      SaneSpace has paused to prioritize your safety. Please contact a crisis counsellor before continuing.
-                    </p>
-                    <button
-                      onClick={() => {
-                        setHardStop(false)
-                        setCrisisTier('monitor')
-                        try {
-                          localStorage.setItem('sane_crisis_tier', 'monitor')
-                        } catch {}
-                      }}
-                      className="shrink-0 bg-white text-red-500 font-medium px-3 py-1.5 rounded-full text-xs whitespace-nowrap hover:bg-red-50 transition-colors"
-                    >
-                      I&apos;m safe, continue
-                    </button>
-                  </div>
-                </motion.div>
+          <footer className="shrink-0 border-t border-border bg-bg-base/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur md:px-6">
+            <div className="mx-auto max-w-4xl space-y-3">
+              <AnimatePresence>
+                {hardStop && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    className="rounded-lg border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-dark"
+                    role="alert"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p>SaneSpace has paused this conversation to prioritize your immediate safety. Please contact a trusted person or crisis support before continuing.</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHardStop(false)
+                          setCrisisTier('monitor')
+                          try {
+                            localStorage.setItem('sane_crisis_tier', 'monitor')
+                          } catch {}
+                        }}
+                        className="shrink-0 rounded-lg border border-red-500/30 bg-surface px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-500"
+                      >
+                        I am safe, continue
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {errorMessage && (
+                <div className="flex flex-col gap-3 rounded-lg border border-red-500/25 bg-surface px-4 py-3 text-sm text-gray-text sm:flex-row sm:items-center sm:justify-between" role="alert">
+                  <span>{errorMessage}</span>
+                  <button
+                    type="button"
+                    onClick={retryLastMessage}
+                    disabled={!lastFailedText || isLoading}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isLoading ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                    Retry
+                  </button>
+                </div>
               )}
-            </AnimatePresence>
 
-            <div className="flex items-end gap-2">
-              {/* Mic button — opens the dedicated Voice Mode experience */}
-              <button
-                onClick={() => router.push('/chat/voice')}
-                disabled={hardStop}
-                title="Switch to voice mode"
-                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all
-                  ${hardStop ? 'opacity-40 cursor-not-allowed bg-surface' : 'bg-surface hover:bg-primary-light'}`}
-              >
-                <Mic size={17} className="text-gray-text" />
-              </button>
+              <div className="flex items-center justify-between gap-3">
+                <CompanionStatus state={hardStop ? 'muted' : isLoading ? 'thinking' : 'idle'} compact />
+                <span className="hidden text-xs text-gray-text sm:inline">Shift + Enter adds a new line</span>
+              </div>
 
-              {/* Textarea */}
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    sendMessage()
-                  }
-                }}
-                placeholder={hardStop ? 'Chat paused for your safety...' : 'Talk to me...'}
-                rows={1}
+              <ChatComposer
+                input={input}
+                setInput={setInput}
+                onSubmit={() => sendMessage()}
+                onVoice={() => router.push('/chat/voice')}
                 disabled={hardStop}
-                className={`flex-1 resize-none rounded-2xl border border-border px-4 py-2.5
-                  text-sm text-dark placeholder-gray-400
-                  focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
-                  transition-all duration-200
-                  ${hardStop ? 'bg-surface/50 opacity-60 cursor-not-allowed' : 'bg-surface'}`}
-                style={{ minHeight: '42px', maxHeight: '120px' }}
+                isLoading={isLoading}
+                textareaRef={textareaRef}
               />
-
-              {/* Send button */}
-              <button
-                onClick={() => sendMessage()}
-                disabled={!input.trim() || isLoading || hardStop}
-                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0
-                  bg-primary text-white transition-all
-                  ${!input.trim() || isLoading || hardStop ? 'opacity-40 cursor-not-allowed' : 'hover:bg-opacity-90 active:scale-95'}`}
-              >
-                <ArrowUp size={17} />
-              </button>
             </div>
-          </div>
-
-        </div>
+          </footer>
+        </main>
       </div>
     </div>
   )
 }
-
-// ─── ConversationPanel ────────────────────────────────────────────────────────
 
 function ConversationPanel({
   conversations,
@@ -741,44 +622,54 @@ function ConversationPanel({
 }: {
   conversations: Conversation[]
   activeConvId: string
-  onLoad: (c: Conversation) => void
+  onLoad: (conversation: Conversation) => void
   onNew: () => void
 }) {
   return (
     <>
-      <div className="px-4 pt-4 pb-2">
-        <p className="font-medium text-dark text-sm mb-3">Conversations</p>
-        <button
-          onClick={onNew}
-          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-full
-            border border-primary text-primary text-xs font-medium
-            hover:bg-primary-light transition-colors"
-        >
-          <Plus size={13} />
-          New conversation
-        </button>
+      <div className="border-b border-border px-4 py-4">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-semibold text-dark">Conversations</p>
+          <button
+            type="button"
+            onClick={onNew}
+            aria-label="Start a new conversation"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-primary transition hover:border-primary/50 hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+        <p className="text-xs leading-relaxed text-gray-text">
+          Keep separate threads for plans, decisions, ideas, and check-ins.
+        </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 pb-4 flex flex-col gap-0.5">
-        {conversations.map((conv) => {
-          const isActive = conv.id === activeConvId
+      <div className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
+        {conversations.map((conversation) => {
+          const isActive = conversation.id === activeConvId
           return (
             <button
-              key={conv.id}
-              onClick={() => onLoad(conv)}
-              className={`w-full text-left px-3 py-2.5 rounded-xl transition-all
-                ${isActive
-                  ? 'bg-primary-light border-l-2 border-primary'
-                  : 'hover:bg-primary-light/40 border-l-2 border-transparent'
-                }`}
+              key={conversation.id}
+              type="button"
+              onClick={() => onLoad(conversation)}
+              className={`w-full rounded-lg border px-3 py-3 text-left transition focus:outline-none focus:ring-2 focus:ring-primary ${
+                isActive
+                  ? 'border-primary/30 bg-primary-light text-primary'
+                  : 'border-transparent text-gray-text hover:border-border hover:bg-bg-base'
+              }`}
             >
-              <p className={`text-sm truncate leading-snug ${isActive ? 'font-semibold text-primary' : 'font-medium text-dark'}`}>
-                {conv.title}
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">{formatConvDate(conv.createdAt)}</p>
+              <p className={`truncate text-sm ${isActive ? 'font-semibold' : 'font-medium text-dark'}`}>{conversation.title}</p>
+              <div className="mt-1 flex items-center justify-between gap-2 text-xs text-gray-text">
+                <span>{formatConvDate(conversation.createdAt)}</span>
+                <span>{conversation.mode === 'voice' ? 'Voice' : 'Text'}</span>
+              </div>
             </button>
           )
         })}
+
+        {conversations.length === 0 && (
+          <p className="px-3 py-6 text-sm text-gray-text">No conversations yet.</p>
+        )}
       </div>
     </>
   )

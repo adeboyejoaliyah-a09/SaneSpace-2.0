@@ -10,9 +10,61 @@ import { generateSaneSpaceResponse } from '@/lib/ai/responseEngine'
 import { AUTH_COOKIE_NAME, getSessionUserFromToken } from '@/lib/auth'
 import { isMemoryEnabled, retrieveRelevantMemories, upsertUserMemories } from '@/lib/memoryStore'
 
+const VALID_MODES = new Set(['listening', 'coach', 'explorer', 'companion', 'care'])
+const MAX_MESSAGES = 40
+const MAX_MESSAGE_LENGTH = 4000
+const MAX_PROFILE_FIELD_LENGTH = 120
+
+type ChatRequestBody = {
+  messages?: unknown
+  specialisation?: unknown
+  languageProfile?: unknown
+  activeMode?: unknown
+  userName?: unknown
+}
+
 function hashExcerpt(message: string): string {
   const excerpt = message.trim().slice(0, 80).toLowerCase()
   return createHash('sha256').update(excerpt).digest('hex')
+}
+
+function sanitizeProfileField(value: unknown, fallback = '') {
+  if (typeof value !== 'string') return fallback
+  const trimmed = value.trim().slice(0, MAX_PROFILE_FIELD_LENGTH)
+  if (!/^[\p{L}\p{N}\s.,'’/&()_-]*$/u.test(trimmed)) return fallback
+  return trimmed
+}
+
+function validateMessages(value: unknown): Message[] | null {
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_MESSAGES) return null
+
+  const messages = value.map((message): Message | null => {
+    if (!message || typeof message !== 'object') return null
+    const candidate = message as Partial<Message>
+    const content = typeof candidate.content === 'string' ? candidate.content.trim() : ''
+    const sender = candidate.sender
+    const adaptiveMode = typeof candidate.adaptiveMode === 'string' && VALID_MODES.has(candidate.adaptiveMode)
+      ? candidate.adaptiveMode
+      : 'listening'
+
+    if (sender !== 'user' && sender !== 'ai') return null
+    if (!content || content.length > MAX_MESSAGE_LENGTH) return null
+
+    return {
+      id: typeof candidate.id === 'string' && candidate.id.length <= 128 ? candidate.id : crypto.randomUUID(),
+      conversationId: typeof candidate.conversationId === 'string' && candidate.conversationId.length <= 128 ? candidate.conversationId : 'server-validated',
+      sender,
+      content,
+      adaptiveMode,
+      timestamp: typeof candidate.timestamp === 'string' && !Number.isNaN(Date.parse(candidate.timestamp))
+        ? candidate.timestamp
+        : new Date().toISOString(),
+    }
+  })
+
+  if (messages.some((message) => message === null)) return null
+  if (messages[messages.length - 1]?.sender !== 'user') return null
+  return messages as Message[]
 }
 
 function buildReasoningSummary(messages: Message[], detectedMode: string, specialisation: string, riskResult: ReturnType<typeof classifyRisk>, crisisAssessment: ReturnType<typeof assessCrisis>) {
@@ -54,23 +106,30 @@ function buildReasoningSummary(messages: Message[], detectedMode: string, specia
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as {
-      messages: Message[]
-      specialisation: string
-      languageProfile: string
-      activeMode: string
-      userName: string
-    }
-
-    const { messages, specialisation, languageProfile, userName } = body
     const sessionToken = cookies().get(AUTH_COOKIE_NAME)?.value
     const sessionUser = sessionToken ? await getSessionUserFromToken(sessionToken) : null
     if (!sessionUser) return NextResponse.json({ message: 'Please sign in to continue.' }, { status: 401 })
+
+    const body = await req.json().catch(() => null) as ChatRequestBody | null
+    if (!body) {
+      return NextResponse.json({ message: 'Invalid request body.' }, { status: 400 })
+    }
+
+    const messages = validateMessages(body.messages)
+    if (!messages) {
+      return NextResponse.json({ message: 'Invalid message history.' }, { status: 400 })
+    }
+
+    const specialisation = sanitizeProfileField(body.specialisation)
+    const languageProfile = sanitizeProfileField(body.languageProfile, 'Neutral / International')
+    const userName = sanitizeProfileField(body.userName, sessionUser.firstName ?? 'there') || 'there'
+    const activeMode = typeof body.activeMode === 'string' && VALID_MODES.has(body.activeMode) ? body.activeMode : 'listening'
+
     const lastUserMsg = [...messages].reverse().find((message) => message.sender === 'user')?.content ?? ''
     const riskResult = classifyRisk(lastUserMsg, messages)
     const lastMessage = messages[messages.length - 1]?.content || lastUserMsg
     const crisisAssessment = assessCrisis(lastMessage, messages)
-    const detectedMode = riskResult.shouldEnterCareMode ? 'care' : (body.activeMode || 'listening')
+    const detectedMode = riskResult.shouldEnterCareMode ? 'care' : activeMode
     const memoryEnabled = isMemoryEnabled(sessionUser.id)
     const relevantMemories = memoryEnabled ? retrieveRelevantMemories(sessionUser.id, lastMessage) : []
 
@@ -151,8 +210,6 @@ export async function POST(req: NextRequest) {
       riskScore: riskResult.riskScore,
       showHumanHandoff: false,
       shouldLogCrisisEvent: false,
-      provider: response.provider,
-      context: response.context,
       memoryExtraction,
     })
   } catch (error) {

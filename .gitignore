@@ -3,7 +3,7 @@ node_modules
 /.pnp
 .pnp.js
 
-# Next.js
+# next.js
 /.next/
 /out/
 
@@ -11,7 +11,7 @@ node_modules
 /build
 /data/
 
-# environment files — NEVER commit secrets
+# env files â€” never commit secrets
 .env
 .env.local
 .env*.local
@@ -29,6 +29,6 @@ yarn-error.log*
 *.pem
 .vercel
 
-# TypeScript
+# typescript
 *.tsbuildinfo
 next-env.d.ts

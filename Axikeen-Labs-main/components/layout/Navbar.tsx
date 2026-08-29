@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowRight } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import DarkModeToggle from '@/components/ui/DarkModeToggle'
 import { useSaneUser } from '@/hooks/useSaneUser'
@@ -75,7 +76,7 @@ export default function Navbar() {
               </Link>
               <Link href="/sign-up">
                 <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                  <Button variant="primary" size="sm">Get Started →</Button>
+                  <Button variant="primary" size="sm">Get Started <ArrowRight size={15} /></Button>
                 </motion.div>
               </Link>
             </>
@@ -92,7 +93,7 @@ export default function Navbar() {
 
         {/* Mobile hamburger */}
         <button
-          className="md:hidden flex flex-col gap-1.5 p-2 focus:outline-none"
+          className="md:hidden flex flex-col gap-1.5 p-2 focus:outline-none focus:ring-2 focus:ring-primary rounded-lg"
           onClick={() => setMenuOpen((v) => !v)}
           aria-label="Toggle menu"
         >
@@ -130,7 +131,7 @@ export default function Navbar() {
                       <Button variant="outline" size="sm" className="w-full">Sign In</Button>
                     </Link>
                     <Link href="/sign-up" onClick={() => setMenuOpen(false)}>
-                      <Button variant="primary" size="sm" className="w-full">Get Started →</Button>
+                      <Button variant="primary" size="sm" className="w-full">Get Started <ArrowRight size={15} /></Button>
                     </Link>
                   </>
                 ) : (

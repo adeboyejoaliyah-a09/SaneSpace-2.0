@@ -1,3 +1,5 @@
+import { Compass, HeartHandshake, MessageCircle, ShieldCheck, Sparkles } from 'lucide-react'
+
 type Mode = 'listening' | 'coach' | 'explorer' | 'companion' | 'care'
 
 interface ModeTagProps {
@@ -5,45 +7,45 @@ interface ModeTagProps {
   size?: 'default' | 'small'
 }
 
-const modeConfig: Record<Mode, { emoji: string; label: string; className: string }> = {
+const modeConfig: Record<Mode, { label: string; className: string; icon: typeof MessageCircle }> = {
   listening: {
-    emoji: '👂',
-    label: 'Listening',
-    className: 'bg-blue-100 text-blue-700',
+    label: 'Listen',
+    className: 'bg-primary-light text-primary border-primary/20',
+    icon: HeartHandshake,
   },
   coach: {
-    emoji: '🎯',
-    label: 'Coach',
-    className: 'bg-primary-light text-primary',
+    label: 'Plan',
+    className: 'bg-accent/10 text-accent border-accent/20',
+    icon: Compass,
   },
   explorer: {
-    emoji: '🔭',
-    label: 'Explorer',
-    className: 'bg-purple-100 text-purple-700',
+    label: 'Explore',
+    className: 'bg-primary-light text-primary border-primary/20',
+    icon: Sparkles,
   },
   companion: {
-    emoji: '🤝',
-    label: 'Companion',
-    className: 'bg-yellow-100 text-yellow-700',
+    label: 'Talk',
+    className: 'bg-accent/10 text-accent border-accent/20',
+    icon: MessageCircle,
   },
   care: {
-    emoji: '❤️',
     label: 'Care',
-    className: 'bg-red-100 text-red-600',
+    className: 'bg-red-500/10 text-red-600 border-red-500/20',
+    icon: ShieldCheck,
   },
 }
 
 export default function ModeTag({ mode, size = 'default' }: ModeTagProps) {
-  const { emoji, label, className } = modeConfig[mode]
+  const { label, className, icon: Icon } = modeConfig[mode]
   const sizeClasses =
     size === 'small'
       ? 'gap-1 px-2 py-0.5 text-[10px]'
       : 'gap-1.5 px-3 py-1 text-xs'
   return (
     <span
-      className={`inline-flex items-center rounded-full font-semibold ${sizeClasses} ${className}`}
+      className={`inline-flex items-center rounded-full border font-semibold ${sizeClasses} ${className}`}
     >
-      <span>{emoji}</span>
+      <Icon size={size === 'small' ? 11 : 13} aria-hidden="true" />
       {label}
     </span>
   )

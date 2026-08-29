@@ -9,6 +9,7 @@ import ProductJourney from '@/components/landing/ProductJourney'
 import SocialProof from '@/components/landing/SocialProof'
 import FinalCTA from '@/components/landing/FinalCTA'
 import LandingFooter from '@/components/landing/LandingFooter'
+import FloatingCompanion from '@/components/landing/FloatingCompanion'
 
 export default function Home() {
   return (
@@ -25,6 +26,7 @@ export default function Home() {
         <SocialProof />
         <FinalCTA />
       </main>
+      <FloatingCompanion />
       <LandingFooter />
     </>
   )

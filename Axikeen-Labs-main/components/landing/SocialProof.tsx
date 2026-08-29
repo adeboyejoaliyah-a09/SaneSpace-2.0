@@ -2,6 +2,7 @@
 
 import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
+import { Quote } from 'lucide-react'
 import ScrollReveal from '@/components/ui/ScrollReveal'
 import { staggerContainer } from '@/lib/animations'
 
@@ -10,28 +11,16 @@ const testimonials = [
     quote: "I sha didn't expect an AI to understand the context so quickly. I could explain what was happening and actually think clearly.",
     name: 'Temi A.',
     sub: '300 Level, UNILAG',
-    before: '😔',
-    after: '🙂',
-    accentColor: 'rgba(10,124,110,0.15)',
-    borderColor: 'rgba(10,124,110,0.2)',
   },
   {
     quote: "The way it understood when I said 'e don do me' — I was shook. I didn't have to stop and translate myself.",
     name: 'Chidi O.',
     sub: 'Software Engineer, Lagos',
-    before: '😣',
-    after: '😀',
-    accentColor: 'rgba(108,99,255,0.15)',
-    borderColor: 'rgba(108,99,255,0.25)',
   },
   {
     quote: "I use SaneSpace to think through work, family, and the decisions I keep postponing. It feels useful because it remembers the thread.",
     name: 'Fatima B.',
     sub: 'Corper, Abuja',
-    before: '😟',
-    after: '🙂',
-    accentColor: 'rgba(10,124,110,0.12)',
-    borderColor: 'rgba(178,223,219,0.35)',
   },
 ]
 
@@ -43,15 +32,6 @@ export default function SocialProof() {
     <section className="relative py-24 md:py-32 px-5 overflow-hidden">
       {/* Deep rich background */}
       <div className="absolute inset-0 mesh-dark" />
-      {/* Glow orbs */}
-      <div
-        className="absolute top-1/4 left-1/4 w-80 h-80 rounded-full blur-3xl pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(10,124,110,0.25) 0%, transparent 70%)' }}
-      />
-      <div
-        className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full blur-3xl pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(108,99,255,0.2) 0%, transparent 70%)' }}
-      />
 
       <div className="relative max-w-6xl mx-auto">
         <ScrollReveal className="text-center mb-14">
@@ -77,19 +57,10 @@ export default function SocialProof() {
               animate={inView ? { opacity: 1, y: 0, scale: 1 } : {}}
               transition={{ delay: i * 0.15, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               whileHover={{ y: -8, scale: 1.02 }}
-              className="relative rounded-2xl p-6 flex flex-col gap-4 glass-dark hover-lift"
-              style={{ border: `1px solid ${t.borderColor}` }}
+              className="relative rounded-lg border border-primary/20 p-6 flex flex-col gap-4 glass-dark hover-lift"
             >
-              {/* Inner accent glow */}
-              <div
-                className="absolute inset-0 rounded-2xl pointer-events-none"
-                style={{ background: `radial-gradient(circle at 20% 20%, ${t.accentColor} 0%, transparent 60%)` }}
-              />
-
-              <div className="flex items-center gap-2 text-base relative">
-                <span className="text-xl">{t.before}</span>
-                <span className="text-primary-mid text-sm">→</span>
-                <span className="text-xl">{t.after}</span>
+              <div className="flex items-center gap-2 text-base relative text-primary-mid">
+                <Quote size={20} />
               </div>
 
               <p className="text-white/80 text-sm leading-relaxed flex-1 relative">

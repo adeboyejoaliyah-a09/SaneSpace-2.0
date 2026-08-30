@@ -1,14 +1,11 @@
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { AUTH_COOKIE_NAME, getSessionUserFromToken } from '@/lib/auth'
+import { getSessionUser } from '@/lib/auth'
 
 export async function GET() {
-  const token = cookies().get(AUTH_COOKIE_NAME)?.value
-
-  if (!token) {
-    return NextResponse.json({ user: null })
+  const user = getSessionUser()
+  if (!user) {
+    return NextResponse.json({ user: null }, { status: 200 })
   }
 
-  const user = await getSessionUserFromToken(token)
   return NextResponse.json({ user })
 }

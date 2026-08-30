@@ -83,3 +83,38 @@ export async function generateSaneSpaceResponse(input: GenerateResponseInput) {
     context: bundle,
   }
 }
+
+export function detectPotentialReminder(message: string): {
+  shouldAsk: boolean
+  confidence: number
+} {
+  const lowered = message.toLowerCase()
+
+  const explicitReminder =
+    lowered.includes('remind me') ||
+    lowered.includes('set a reminder') ||
+    lowered.includes('reminder for') ||
+    lowered.includes('wake me up') ||
+    lowered.includes('notify me')
+
+  const commitmentLike =
+    lowered.includes('i have') &&
+    (lowered.includes('assignment') ||
+      lowered.includes('interview') ||
+      lowered.includes('exam') ||
+      lowered.includes('deadline') ||
+      lowered.includes('presentation') ||
+      lowered.includes('meeting') ||
+      lowered.includes('call') ||
+      lowered.includes('project'))
+
+  if (explicitReminder) {
+    return { shouldAsk: false, confidence: 1 }
+  }
+
+  if (commitmentLike) {
+    return { shouldAsk: true, confidence: 0.78 }
+  }
+
+  return { shouldAsk: false, confidence: 0 }
+}

@@ -17,6 +17,7 @@ import type { CrisisTier } from '@/lib/crisisDetection'
 import type { StoredUserMemory } from '@/lib/memoryExtraction'
 import MoodCheckIn, { type DailyMood } from '@/components/dashboard/MoodCheckIn'
 import LifeNavigation from '@/components/dashboard/LifeNavigation'
+import { UpcomingReminders } from '@/components/dashboard/UpcomingReminders'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -932,6 +933,30 @@ export default function DashboardPage() {
           </AnimatePresence>
         </div>
       </main>
+      <UpcomingReminders reminders={exampleReminders} />
     </div>
   )
 }
+
+const exampleReminders = [
+  {
+    id: '1',
+    title: 'Review chemistry notes',
+    description: 'Go over the formula sheet before class',
+    dueAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+    status: 'pending' as const,
+  },
+  {
+    id: '2',
+    title: 'Submit portfolio draft',
+    description: 'Share the final draft for feedback',
+    dueAt: new Date(Date.now() + 1000 * 60 * 60 * 36).toISOString(),
+    status: 'pending' as const,
+  },
+] satisfies Array<{
+  id: string
+  title: string
+  description?: string | null
+  dueAt: string
+  status: 'pending' | 'completed' | 'dismissed' | 'cancelled'
+}>

@@ -199,9 +199,7 @@ export default function VoicePage() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(VOICE_PREF_KEY)
-      if (saved && VOICE_OPTIONS.some((voice) => voice.id === saved)) {
-        setVoiceId(saved)
-      }
+      if (saved && VOICE_OPTIONS.some((voice) => voice.id === saved)) setVoiceId(saved)
     } catch {}
   }, [])
 
@@ -221,9 +219,7 @@ export default function VoicePage() {
 
     try {
       const prefs = JSON.parse(localStorage.getItem('sane_user_preferences') ?? '{}')
-      if (typeof prefs.firstName === 'string' && prefs.firstName.trim()) {
-        setFirstName(prefs.firstName.trim())
-      }
+      if (typeof prefs.firstName === 'string' && prefs.firstName.trim()) setFirstName(prefs.firstName.trim())
     } catch {}
   }, [user?.firstName])
 
@@ -380,6 +376,56 @@ export default function VoicePage() {
       stopAudioPlayback()
     }
   }
+
+  const speak = useCallback(async (text: string) => {
+    if (!text?.trim()) return
+
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'en-US'
+    utterance.rate = 1
+    utterance.pitch = 1
+    utterance.volume = 1
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+      window.speechSynthesis.speak(utterance)
+      setStatus('speaking')
+    }
+  }, [setStatus])
+
+  const sendToAI = useCallback(async (inputText: string) => {
+    const text = inputText.trim()
+    if (!text) return
+
+    setStatus('thinking')
+    setError(null)
+    setMicError('')
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      })
+
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload?.error ?? 'Unable to send your message.')
+      }
+
+      if (payload?.reply) {
+        await speak(payload.reply)
+      }
+
+      setStatus('idle')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong.'
+      setError(message)
+      setMicError(message)
+      setStatus('error')
+    }
+  }, [speak])
 
   const startRecognition = useCallback(() => {
     const Recognition = getSpeechRecognition()

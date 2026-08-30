@@ -1,31 +1,41 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { AUTH_COOKIE_NAME, verifySessionToken } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { AUTH_COOKIE_NAME, verifySessionToken } from '@/lib/auth-edge'
 
-const protectedPaths = ['/dashboard', '/chat', '/mood', '/profile', '/onboarding']
+const PUBLIC_PATHS = [
+  '/',
+  '/sign-in',
+  '/sign-up',
+  '/api/auth/google',
+  '/api/auth/google/callback',
+]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  const isProtectedRoute = protectedPaths.some((path) =>
-    pathname === path || pathname.startsWith(`${path}/`),
-  )
-
-  if (!isProtectedRoute) {
+  if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || pathname.includes('.')) {
     return NextResponse.next()
   }
 
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value
+  const user = await verifySessionToken(token)
 
-  if (!token || !(await verifySessionToken(token))) {
-    const loginUrl = new URL('/sign-in', request.url)
-    loginUrl.searchParams.set('from', pathname)
-    return NextResponse.redirect(loginUrl)
+  const isPublic =
+    PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/api/auth/')
+
+  const isAuthPage = pathname === '/sign-in' || pathname === '/sign-up'
+
+  if (!user && !isPublic && !pathname.startsWith('/api/auth/')) {
+    const signInUrl = new URL('/sign-in', request.url)
+    return NextResponse.redirect(signInUrl)
+  }
+
+  if (user && isAuthPage) {
+    return NextResponse.redirect(new URL('/chat', request.url))
   }
 
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/((?!api/auth/google|_next|.*\..*).*)'],
+  matcher: ['/((?!api/auth/google|_next/static|_next/image|favicon.ico).*)'],
 }

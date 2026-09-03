@@ -18,6 +18,7 @@ import type { StoredUserMemory } from '@/lib/memoryExtraction'
 import MoodCheckIn, { type DailyMood } from '@/components/dashboard/MoodCheckIn'
 import LifeNavigation from '@/components/dashboard/LifeNavigation'
 import { UpcomingReminders } from '@/components/dashboard/UpcomingReminders'
+import { getLanguageEmoji, getLanguageLabel } from '@/lib/languages'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -52,14 +53,6 @@ const AREA_PROMPTS: Record<string, string> = {
   Relationships: 'I want to think through something related to my relationships.',
   Finances: 'I want to think through a financial decision.',
   'Personal life': 'I want help navigating something in my personal life.',
-}
-
-const LANG_EMOJI: Record<string, string> = {
-  'Nigerian Pidgin': '🇳🇬',
-  'Lagos English': '🗣️',
-  'Student English': '🎓',
-  'Nigerian Home English': '🏠',
-  'Neutral / International': '🌍',
 }
 
 type Tip = { id: string; icon: string; text: string; category: string }
@@ -394,16 +387,17 @@ export default function DashboardPage() {
       const saved = localStorage.getItem('sane_user_preferences')
       if (saved) setPrefs(JSON.parse(saved))
     } catch {}
-    try {
-      const stored = JSON.parse(localStorage.getItem('sane_mood_entries') ?? '[]') as {
-        id: string; mood: string; date: string
-      }[]
-      if (stored.length > 0) {
-        setRealEntries(stored)
-        setRealStreak(calcRealStreak(stored))
-        setJourneyNarrative(buildNarrative(stored))
-      }
-    } catch {}
+    void fetch('/api/mood', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<{ entries: { id: string; mood: string; date: string }[] }> : null)
+      .then((data) => {
+        const entries = data?.entries ?? []
+        if (entries.length > 0) {
+          setRealEntries(entries)
+          setRealStreak(calcRealStreak(entries))
+          setJourneyNarrative(buildNarrative(entries))
+        }
+      })
+      .catch(() => {})
     try {
       const storedTier = localStorage.getItem('sane_crisis_tier')
       if (storedTier === 'safe' || storedTier === 'monitor' || storedTier === 'escalate' || storedTier === 'stop') {
@@ -414,10 +408,10 @@ export default function DashboardPage() {
       const storedMemory = JSON.parse(localStorage.getItem('sane_memory_confidence') ?? '{}') as MemoryConfidence
       if (Object.keys(storedMemory).length > 0) setMemoryConfidence(storedMemory)
     } catch {}
-    try {
-      const storedConvs = JSON.parse(localStorage.getItem('sane_conversations') ?? '[]') as Conversation[]
-      setRealConversations(storedConvs.filter((c) => c.messages.length > 0))
-    } catch {}
+    void fetch('/api/conversations', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<{ conversations: Conversation[] }> : null)
+      .then((data) => { if (data) setRealConversations(data.conversations.filter((conversation) => conversation.messages.length > 0)) })
+      .catch(() => {})
     void fetch('/api/memory', { cache: 'no-store' })
       .then((response) => response.ok ? response.json() as Promise<{ memories: StoredUserMemory[] }> : null)
       .then((data) => { if (data) setUserMemory(data.memories) })
@@ -434,7 +428,7 @@ export default function DashboardPage() {
     : "What's up?"
 
   const langLabel = prefs?.languageProfile
-    ? `${LANG_EMOJI[prefs.languageProfile] ?? ''} ${prefs.languageProfile}`
+    ? `${getLanguageEmoji(prefs.languageProfile)} ${getLanguageLabel(prefs.languageProfile)}`
     : null
 
   const structuredTriggerEntries = userMemory
@@ -932,31 +926,8 @@ export default function DashboardPage() {
             )}
           </AnimatePresence>
         </div>
+        <UpcomingReminders />
       </main>
-      <UpcomingReminders reminders={exampleReminders} />
     </div>
   )
 }
-
-const exampleReminders = [
-  {
-    id: '1',
-    title: 'Review chemistry notes',
-    description: 'Go over the formula sheet before class',
-    dueAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
-    status: 'pending' as const,
-  },
-  {
-    id: '2',
-    title: 'Submit portfolio draft',
-    description: 'Share the final draft for feedback',
-    dueAt: new Date(Date.now() + 1000 * 60 * 60 * 36).toISOString(),
-    status: 'pending' as const,
-  },
-] satisfies Array<{
-  id: string
-  title: string
-  description?: string | null
-  dueAt: string
-  status: 'pending' | 'completed' | 'dismissed' | 'cancelled'
-}>

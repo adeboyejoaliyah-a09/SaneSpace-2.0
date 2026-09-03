@@ -7,6 +7,9 @@ import { ArrowLeft, Keyboard, Mic, MicOff, Phone, Settings, Volume2, VolumeX, X 
 import { CompanionAvatar, CompanionState, CompanionStatus } from '@/components/ui/Companion'
 import { useSaneUser } from '@/hooks/useSaneUser'
 import type { Conversation, Message } from '@/lib/types'
+import { getFinalTranscript, getRecognitionLocale } from '@/lib/voiceConversation'
+import { persistVoiceConversation, requestVoiceChat, requestVoiceTts } from '@/lib/voiceTransport'
+import { playAudioElement, speakWithBrowser } from '@/lib/voiceOutput'
 
 type VoiceStatus = 'idle' | 'listening' | 'thinking' | 'speaking' | 'muted' | 'error'
 type AnySpeechRecognition = {
@@ -74,12 +77,6 @@ function getSpeechRecognition() {
   )
 }
 
-function buildVoiceTitle(messages: Message[]) {
-  const firstUserMsg = messages.find((message) => message.sender === 'user')
-  const rawTitle = firstUserMsg?.content.trim() || 'Voice conversation'
-  return rawTitle.length > 48 ? `${rawTitle.slice(0, 48)}...` : rawTitle
-}
-
 function VoiceWaveform({ active }: { active: boolean }) {
   const reduceMotion = useReducedMotion()
 
@@ -109,11 +106,12 @@ export default function VoicePage() {
   const [started, setStarted] = useState(false)
   const [starting, setStarting] = useState(false)
   const [micError, setMicError] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [transcript, setTranscript] = useState('')
   const [aiText, setAiText] = useState('')
   const [conversationMessages, setConversationMessages] = useState<Message[]>([])
   const [firstName, setFirstName] = useState('there')
+  const [specialisation, setSpecialisation] = useState('')
+  const [languageProfile, setLanguageProfile] = useState('Neutral / International')
   const [voiceId, setVoiceId] = useState('browser')
   const [voicePickerOpen, setVoicePickerOpen] = useState(false)
   const [volumeEnabled, setVolumeEnabled] = useState(true)
@@ -130,6 +128,8 @@ export default function VoicePage() {
   const messagesRef = useRef<Message[]>([])
   const voiceIdRef = useRef('browser')
   const conversationIdRef = useRef('')
+  const processedTranscriptsRef = useRef(new Set<string>())
+  const restartRecognitionRef = useRef<(() => void) | null>(null)
   const isMountedRef = useRef(false)
 
   useEffect(() => {
@@ -220,8 +220,23 @@ export default function VoicePage() {
     try {
       const prefs = JSON.parse(localStorage.getItem('sane_user_preferences') ?? '{}')
       if (typeof prefs.firstName === 'string' && prefs.firstName.trim()) setFirstName(prefs.firstName.trim())
+      if (typeof prefs.specialisation === 'string') setSpecialisation(prefs.specialisation)
+      if (typeof prefs.languageProfile === 'string') setLanguageProfile(prefs.languageProfile)
     } catch {}
   }, [user?.firstName])
+
+  useEffect(() => {
+    void fetch('/api/profile', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<{ profile?: { firstName?: string | null; specialisation?: string | null; languageProfile?: string | null } }> : null)
+      .then((data) => {
+        const profile = data?.profile
+        if (!profile) return
+        if (profile.firstName) setFirstName(profile.firstName)
+        if (profile.specialisation) setSpecialisation(profile.specialisation)
+        if (profile.languageProfile) setLanguageProfile(profile.languageProfile)
+      })
+      .catch(() => {})
+  }, [])
 
   const startAmplitudeDetection = async () => {
     stopMicResources()
@@ -266,166 +281,105 @@ export default function VoicePage() {
     } catch {}
   }
 
-  const saveConversation = (messages: Message[]) => {
-    if (messages.length === 0) return
-
-    try {
-      const stored: Conversation[] = JSON.parse(localStorage.getItem('sane_conversations') ?? '[]')
-      const id = conversationIdRef.current
-      const idx = stored.findIndex((conversation) => conversation.id === id)
-      const updated: Conversation = {
-        id,
-        userId: 'local',
-        title: buildVoiceTitle(messages),
-        mode: 'voice',
-        createdAt: stored[idx]?.createdAt ?? new Date().toISOString(),
-        messages,
-      }
-      if (idx >= 0) stored[idx] = updated
-      else stored.unshift(updated)
-      localStorage.setItem('sane_conversations', JSON.stringify(stored))
-    } catch {}
-  }
-
-  const speakResponse = (text: string): Promise<void> => {
-    return new Promise((resolve) => {
-      if (!volumeEnabled) {
-        resolve()
-        return
-      }
-
-      stopAudioPlayback()
-      setStatus('speaking')
-      setAiText(text)
-
-      const synth = window.speechSynthesis
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.rate = 0.95
-      utterance.pitch = 1
-      utterance.volume = 1
-
-      const pickVoice = (voices: SpeechSynthesisVoice[]) =>
-        voices.find((voice) => voice.lang.startsWith('en') && voice.name.includes('Female')) ||
-        voices.find((voice) => voice.lang.startsWith('en')) ||
-        voices[0]
-
-      const voices = synth.getVoices()
-      if (voices.length > 0) {
-        const preferred = pickVoice(voices)
-        if (preferred) utterance.voice = preferred
-      } else {
-        synth.addEventListener('voiceschanged', () => {
-          const preferred = pickVoice(synth.getVoices())
-          if (preferred) utterance.voice = preferred
-        }, { once: true })
-      }
-
-      let keepAlive: ReturnType<typeof setInterval> | null = setInterval(() => {
-        if (!synth.speaking && keepAlive) {
-          clearInterval(keepAlive)
-          keepAlive = null
-        } else {
-          synth.pause()
-          synth.resume()
-        }
-      }, 10000)
-
-      const finish = () => {
-        if (keepAlive) clearInterval(keepAlive)
-        setAiText('')
-        resolve()
-      }
-
-      utterance.onend = finish
-      utterance.onerror = finish
-      synth.speak(utterance)
-    })
-  }
-
-  const speakWithElevenLabs = async (text: string, id: string): Promise<void> => {
+  const playAssistantResponse = useCallback(async (text: string) => {
     if (!volumeEnabled) return
 
     stopAudioPlayback()
-    setStatus('speaking')
     setAiText(text)
+    setStatus('speaking')
+
+    if (voiceIdRef.current === 'browser') {
+      const spoken = await speakWithBrowser(text, getRecognitionLocale(languageProfile))
+      if (!spoken) setMicError('Audio playback is unavailable in this browser. The response is still available as text.')
+      return
+    }
 
     try {
-      const response = await fetch('/api/voice/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voiceId: id }),
-      })
-      if (!response.ok) throw new Error('TTS unavailable')
+      const blob = await requestVoiceTts(text, voiceIdRef.current, getRecognitionLocale(languageProfile))
 
-      const blob = await response.blob()
+      const audio = audioPlayerRef.current ?? new Audio()
+      audioPlayerRef.current = audio
       const url = URL.createObjectURL(blob)
       objectUrlRef.current = url
-      if (!audioPlayerRef.current) audioPlayerRef.current = new Audio()
-      const audio = audioPlayerRef.current
-      audio.muted = false
-      audio.src = url
-
-      await new Promise<void>((resolve) => {
-        audio.onended = () => resolve()
-        audio.onerror = () => resolve()
-        audio.play().catch(() => resolve())
-      })
-    } catch {
-      await speakResponse(text)
-    } finally {
-      stopAudioPlayback()
+      const played = await playAudioElement(audio, url)
+      if (!played) throw new Error('Audio playback failed.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Audio playback failed.'
+      if (message.includes('configured')) {
+        setMicError('Enhanced audio is not configured. Trying browser audio instead.')
+        const spoken = await speakWithBrowser(text, getRecognitionLocale(languageProfile))
+        if (spoken) return
+      }
+      setMicError(message.includes('configured')
+        ? 'Enhanced audio is not configured. The response is still available as text.'
+        : 'Audio playback failed. The response is still available as text.')
     }
-  }
+  }, [languageProfile, stopAudioPlayback, volumeEnabled])
 
-  const speak = useCallback(async (text: string) => {
-    if (!text?.trim()) return
-
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'en-US'
-    utterance.rate = 1
-    utterance.pitch = 1
-    utterance.volume = 1
-
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-      window.speechSynthesis.speak(utterance)
-      setStatus('speaking')
+  const processTranscript = useCallback(async (rawTranscript: string) => {
+    const text = rawTranscript.trim()
+    if (!text || isProcessingRef.current || !conversationIdRef.current) return
+    if (processedTranscriptsRef.current.has(text)) return
+    processedTranscriptsRef.current.add(text)
+    if (processedTranscriptsRef.current.size > 20) {
+      const oldest = processedTranscriptsRef.current.values().next().value
+      if (oldest) processedTranscriptsRef.current.delete(oldest)
     }
-  }, [setStatus])
 
-  const sendToAI = useCallback(async (inputText: string) => {
-    const text = inputText.trim()
-    if (!text) return
-
-    setStatus('thinking')
-    setError(null)
+    stopRecognition()
+    isProcessingRef.current = true
+    setTranscript(text)
     setMicError('')
+    setStatus('thinking')
+
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      conversationId: conversationIdRef.current,
+      sender: 'user',
+      content: text,
+      adaptiveMode: 'listening',
+      timestamp: new Date().toISOString(),
+    }
+    const nextMessages = [...messagesRef.current, userMessage]
+    setConversationMessages(nextMessages)
+    messagesRef.current = nextMessages
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
-      })
+      const data = await requestVoiceChat({ messages: nextMessages, specialisation, languageProfile, userName: firstName })
+      const assistantText = data.message
+      if (!assistantText) throw new Error('SaneSpace could not respond right now.')
 
-      const payload = await response.json()
+      const aiMessage: Message = {
+        id: crypto.randomUUID(),
+        conversationId: conversationIdRef.current,
+        sender: 'ai',
+        content: assistantText,
+        adaptiveMode: data.detectedMode === 'care' ? 'care' : 'listening',
+        timestamp: new Date().toISOString(),
+      }
+      const finalMessages = [...nextMessages, aiMessage]
+      setConversationMessages(finalMessages)
+      messagesRef.current = finalMessages
+      setAiText(assistantText)
 
-      if (!response.ok) {
-        throw new Error(payload?.error ?? 'Unable to send your message.')
+      try {
+        await persistVoiceConversation(conversationIdRef.current, finalMessages)
+      } catch {
+        setMicError('Your response is here, but this conversation could not be saved.')
       }
 
-      if (payload?.reply) {
-        await speak(payload.reply)
-      }
-
-      setStatus('idle')
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Something went wrong.'
-      setError(message)
-      setMicError(message)
+      await playAssistantResponse(assistantText)
+    } catch (error) {
+      setMicError(error instanceof Error ? error.message : 'SaneSpace could not respond right now.')
       setStatus('error')
+    } finally {
+      isProcessingRef.current = false
+      if (isMountedRef.current && !isMutedRef.current && started) {
+        setStatus('listening')
+        restartRecognitionRef.current?.()
+      }
     }
-  }, [speak])
+  }, [firstName, languageProfile, playAssistantResponse, specialisation, started, stopRecognition])
 
   const startRecognition = useCallback(() => {
     const Recognition = getSpeechRecognition()
@@ -438,7 +392,7 @@ export default function VoicePage() {
     const recognition = new Recognition()
     recognition.continuous = false
     recognition.interimResults = true
-    recognition.lang = 'en-US'
+    recognition.lang = getRecognitionLocale(languageProfile)
 
     recognition.onresult = (event: unknown) => {
       const resultEvent = event as {
@@ -449,9 +403,9 @@ export default function VoicePage() {
 
       const latest = resultEvent.results[resultEvent.results.length - 1]
       const text = latest?.[0]?.transcript ?? ''
-      if (text.trim()) {
-        setTranscript(text.trim())
-      }
+      if (text.trim()) setTranscript(text.trim())
+      const finalTranscript = getFinalTranscript(resultEvent.results as ArrayLike<{ isFinal?: boolean; 0?: { transcript?: string } }>)
+      if (finalTranscript) void processTranscript(finalTranscript)
     }
 
     recognition.onerror = (event: { error?: string }) => {
@@ -461,7 +415,6 @@ export default function VoicePage() {
           : 'Speech recognition is unavailable right now.'
 
       setMicError(message)
-      setError(message)
       setStatus('error')
     }
 
@@ -478,7 +431,11 @@ export default function VoicePage() {
       setMicError('The microphone is already in use. Please try again.')
       setStatus('error')
     }
-  }, [])
+  }, [languageProfile, processTranscript])
+
+  useEffect(() => {
+    restartRecognitionRef.current = startRecognition
+  }, [startRecognition])
 
   useEffect(() => {
     if (!isMountedRef.current) return
@@ -496,7 +453,14 @@ export default function VoicePage() {
 
     try {
       await startAmplitudeDetection()
-      conversationIdRef.current = crypto.randomUUID()
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'voice' }),
+      })
+      if (!response.ok) throw new Error('Unable to start voice conversation')
+      const data = await response.json() as { conversation: Conversation }
+      conversationIdRef.current = data.conversation.id
       setConversationMessages([])
       setStarted(true)
       setStatus('listening')

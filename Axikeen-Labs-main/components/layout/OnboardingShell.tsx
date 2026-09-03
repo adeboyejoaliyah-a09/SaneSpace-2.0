@@ -42,17 +42,7 @@ export default function OnboardingShell({
 
       {/* Content */}
       <main className="flex-1 flex items-center justify-center px-5 py-10">
-        <div className="w-full max-w-[600px]">
-          <h1>Meet your personal AI companion</h1>
-          <p>
-            SaneSpace helps you keep track of what matters across school, work,
-            relationships, routines, and everyday life.
-          </p>
-          <p>
-            You stay in control. SaneSpace remembers context, helps you plan, and
-            can suggest helpful reminders when you want them.
-          </p>
-        </div>
+        <div className="w-full max-w-[600px]">{children}</div>
       </main>
     </div>
   )

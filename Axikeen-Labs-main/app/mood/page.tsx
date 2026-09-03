@@ -178,14 +178,17 @@ export default function MoodPage() {
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false)
   const [todayEntry, setTodayEntry] = useState<LocalEntry | null>(null)
   const [streak, setStreak] = useState(0)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   const firstName = user?.firstName || 'there'
 
   useEffect(() => {
-    try {
-      const entries: LocalEntry[] = JSON.parse(
-        localStorage.getItem('sane_mood_entries') ?? '[]',
-      )
+    void fetch('/api/mood', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<{ entries: LocalEntry[] }> : null)
+      .then((data) => {
+        if (!data) return
+        const entries = data.entries
       const todayStr = new Date().toDateString()
       const found = entries.find((e) => new Date(e.date).toDateString() === todayStr)
       if (found) {
@@ -193,7 +196,8 @@ export default function MoodPage() {
         setTodayEntry(found)
       }
       setStreak(calcStreak(entries))
-    } catch {}
+      })
+      .catch(() => {})
   }, [])
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -204,25 +208,28 @@ export default function MoodPage() {
     setTimeout(() => setStep(2), 600)
   }
 
-  const saveMoodEntry = () => {
+  const saveMoodEntry = async () => {
+    if (isSaving) return false
+    setIsSaving(true)
+    setSaveError('')
     const entry: LocalEntry = {
       id: crypto.randomUUID(),
-      userId: 'local',
+      userId: user?.id ?? '',
       mood: selectedMood ?? 'Neutral',
       triggerTag: selectedTrigger,
       note: journalNote || null,
       date: new Date().toISOString(),
     }
     try {
-      const existing: LocalEntry[] = JSON.parse(
-        localStorage.getItem('sane_mood_entries') ?? '[]',
-      )
-      const todayStr = new Date().toDateString()
-      const filtered = existing.filter(
-        (e) => new Date(e.date).toDateString() !== todayStr,
-      )
-      filtered.unshift(entry)
-      localStorage.setItem('sane_mood_entries', JSON.stringify(filtered))
+      const response = await fetch('/api/mood', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mood: entry.mood, triggerTag: entry.triggerTag, note: entry.note, date: entry.date }),
+      })
+      if (!response.ok) throw new Error('Mood could not be saved')
+      const data = await response.json() as { entry: LocalEntry; entries: LocalEntry[] }
+      setTodayEntry(data.entry)
+      setAlreadyCheckedIn(true)
+      setStreak(calcStreak(data.entries))
 
       const extraction = extractEmotionalMemory({
         userId: 'authenticated-user',
@@ -234,12 +241,18 @@ export default function MoodPage() {
           note: journalNote,
         },
       })
-      void fetch('/api/memory', {
+      await fetch('/api/memory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memories: extraction.memoriesExtracted }),
       })
-    } catch {}
+      return true
+    } catch {
+      setSaveError('Your check-in could not be saved. Please try again.')
+      return false
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const buildPrefilledMsg = () => {
@@ -249,16 +262,16 @@ export default function MoodPage() {
     return msg
   }
 
-  const goToChat = () => {
-    saveMoodEntry()
+  const goToChat = async () => {
+    if (!await saveMoodEntry()) return
     try {
       localStorage.setItem('sane_prefilled_message', buildPrefilledMsg())
     } catch {}
     router.push('/chat')
   }
 
-  const goToDashboard = () => {
-    saveMoodEntry()
+  const goToDashboard = async () => {
+    if (!await saveMoodEntry()) return
     router.push('/dashboard')
   }
 
@@ -508,7 +521,9 @@ export default function MoodPage() {
                       animate="visible"
                       className="mb-6"
                     >
+                      <label htmlFor="journal-note" className="sr-only">Optional check-in note</label>
                       <textarea
+                        id="journal-note"
                         value={journalNote}
                         onChange={(e) =>
                           setJournalNote(e.target.value.slice(0, 280))
@@ -620,6 +635,7 @@ export default function MoodPage() {
                           variant="primary"
                           size="lg"
                           onClick={goToChat}
+                          disabled={isSaving}
                           className="w-full"
                         >
                           Talk to SaneSpace about this →
@@ -630,11 +646,13 @@ export default function MoodPage() {
                           variant="outline"
                           size="lg"
                           onClick={goToDashboard}
+                          disabled={isSaving}
                           className="w-full"
                         >
                           Back to Dashboard →
                         </Button>
                       </motion.div>
+                      {saveError && <p className="text-sm text-red-600" role="alert">{saveError}</p>}
                     </motion.div>
                   </div>
                 )}

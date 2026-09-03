@@ -1,3 +1,5 @@
+import { getLanguageDefinition } from '@/lib/languages'
+const TRANSLATION_TIMEOUT_MS = 8000
 export interface TranslationRequest {
   text: string
   source?: string
@@ -25,6 +27,7 @@ export class LibreTranslateProvider implements TranslationProvider {
           target,
           format: 'text',
         }),
+        signal: AbortSignal.timeout(TRANSLATION_TIMEOUT_MS),
       })
 
       if (!response.ok) {
@@ -49,4 +52,10 @@ export const translationProvider: TranslationProvider = new LibreTranslateProvid
 
 export async function translateText(text: string, target = 'en', source = 'auto'): Promise<string | null> {
   return translationProvider.translate({ text, source, target })
+}
+
+export async function adaptResponseForLanguage(text: string, languageProfile?: string): Promise<string> {
+  const language = getLanguageDefinition(languageProfile)
+  if (language.translationStrategy !== 'optional-translation' || !language.translationTarget) return text
+  return (await translateText(text, language.translationTarget)) ?? text
 }

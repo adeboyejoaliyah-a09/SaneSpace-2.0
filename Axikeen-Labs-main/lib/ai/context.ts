@@ -2,6 +2,7 @@ import type { Message } from '@/lib/types'
 import { classifyRisk } from '@/lib/riskClassifier'
 import { extractEmotionalMemory } from '@/lib/memoryExtraction'
 import type { StoredUserMemory } from '@/lib/memoryExtraction'
+import { getLanguageDefinition, normalizeLanguageId, type LanguageId } from '@/lib/languages'
 
 export type SaneDomain =
   | 'school'
@@ -13,9 +14,11 @@ export type SaneDomain =
   | 'decision_making'
   | 'general'
 
-export type LanguageProfile = 'pidgin' | 'lagos' | 'student' | 'home' | 'neutral'
+export type LanguageProfile = LanguageId
 
 export interface ContextBundle {
+  languageId: LanguageProfile
+  locale: string
   identity: string
   userContext: string
   personalMemory: string
@@ -41,22 +44,26 @@ const DOMAIN_KEYWORDS: Record<SaneDomain, RegExp[]> = {
 }
 
 function inferLanguageProfile(input: string, override?: string): LanguageProfile {
-  if (override) {
-    const value = override.toLowerCase()
-    if (value.includes('pidgin')) return 'pidgin'
-    if (value.includes('lagos')) return 'lagos'
-    if (value.includes('student')) return 'student'
-    if (value.includes('home')) return 'home'
-  }
+  if (override) return normalizeLanguageId(override)
 
   const normalized = input.toLowerCase()
 
-  if (/\b(omo|abeg|wahala|dey|don|no fit|sha)\b/.test(normalized)) return 'pidgin'
-  if (/\b(chai|how far|weytin|na wa|this thing don do me|i no fit again)\b/.test(normalized)) return 'lagos'
-  if (/\b(cgpa|carry over|harass|course mate|hostel|department)\b/.test(normalized)) return 'student'
-  if (/\b(family expectations|my parents|mum|dad|house|school fees)\b/.test(normalized)) return 'home'
+  if (/\b(omo|abeg|wahala|dey|don|no fit|sha)\b/.test(normalized)) return 'nigerian-pidgin'
+  if (/\b(chai|how far|weytin|na wa|this thing don do me|i no fit again)\b/.test(normalized)) return 'lagos-english'
+  if (/\b(cgpa|carry over|harass|course mate|hostel|department)\b/.test(normalized)) return 'student-english'
+  if (/\b(family expectations|my parents|mum|dad|house|school fees)\b/.test(normalized)) return 'nigerian-home-english'
 
-  return 'neutral'
+  return 'english'
+}
+
+function buildCulturalContext(languageProfile: string): string {
+  const language = getLanguageDefinition(languageProfile)
+  const regionalNote = language.culturalContext === 'nigerian'
+    ? ' For Nigerian English, Pidgin, and Lagos context, understand code-switching and local social context without forcing slang.'
+    : ['yoruba', 'hausa', 'igbo'].includes(language.id)
+      ? ' For a requested Nigerian language, respect the language and cultural context without reducing it to a stereotype.'
+      : ' For global users, use the selected language and context without assuming a country or culture.'
+  return `Cultural context should be interpreted as supportive context, not stereotype. Adapt examples, references, and social assumptions to the user's stated context. Keep language natural, clear, and respectful.${regionalNote}`
 }
 
 function inferDomain(input: string): SaneDomain {
@@ -107,6 +114,7 @@ export function buildContextBundle(input: {
   const lastUserMessage = [...input.messages].reverse().find((message) => message.sender === 'user')?.content ?? ''
   const riskResult = classifyRisk(lastUserMessage, input.messages)
   const languageProfile = inferLanguageProfile(lastUserMessage, input.languageProfile)
+  const language = getLanguageDefinition(languageProfile)
   const domain = inferDomain(lastUserMessage)
   const specialisation = input.specialisation ?? 'General support'
   const userName = input.userName?.trim() || 'friend'
@@ -120,10 +128,10 @@ export function buildContextBundle(input: {
   })
 
   const identity = `SaneSpace is a personal AI companion that prioritizes the person before the task. It is warm, attentive, practical, culturally aware, non-judgmental, and useful across school, work, relationships, decision-making, creativity, personal planning, and everyday life.`
-  const userContext = `User preference: ${specialisation}. Communication style: ${languageProfile}. User name: ${userName}. Adapt to the user naturally without forcing them into a rigid script.`
+  const userContext = `Personality/specialisation: ${specialisation}. Language/register preference: ${languageProfile}. User name: ${userName}. Adapt naturally without forcing a rigid script.`
   const retrievedMemory = input.userMemories ?? []
   const personalMemory = `Relevant memory summary: ${getMemorySummary(input.messages)}. Retrieved user memories: ${retrievedMemory.map((item) => `${item.category}:${item.content}`).join('; ') || 'No relevant stored memory.'}. New structured insights: ${memoryExtraction.memoriesExtracted.slice(0, 2).map((item) => `${item.category}:${item.content}`).join('; ') || 'None.'}`
-  const culturalContext = `Cultural context should be interpreted as supportive context, not stereotype. Understand Nigerian English, Nigerian Pidgin, Lagos English, student slang, and local social expectations. Keep language natural, clear, and respectful. Use cultural familiarity to improve communication without making assumptions about identity.`
+  const culturalContext = buildCulturalContext(input.languageProfile ?? languageProfile)
   const emotionalContext = `Current conversational emotional cues: ${getEmotionalSummary(input.messages)}. Match the tone to the user's actual moment. Be attentive without overperforming empathy. Avoid repetitive “I’m sorry” scripts when the context calls for practical warmth.`
   const domainContext = `Current domain likely in focus: ${domain}. Respond as a companion in that domain while staying aware of the person behind the request.`
   const safetyContext = riskResult.riskLevel === 'low'
@@ -135,6 +143,8 @@ export function buildContextBundle(input: {
         : 'Safety: critical-risk signals. Stop normal advice and use urgent crisis guidance and immediate human support direction.'
 
   return {
+    languageId: language.id,
+    locale: language.locale,
     identity,
     userContext,
     personalMemory,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Check, MessageCircle } from 'lucide-react'
 import Button from '@/components/ui/Button'
@@ -26,27 +26,38 @@ type MoodEntry = {
   date: string
 }
 
-function readEntries(): MoodEntry[] {
-  try {
-    return JSON.parse(localStorage.getItem('sane_mood_entries') ?? '[]') as MoodEntry[]
-  } catch {
-    return []
-  }
-}
-
 export default function MoodCheckIn({ onTalk }: { onTalk?: (mood: DailyMood) => void }) {
   const [selected, setSelected] = useState<DailyMood | null>(null)
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
-  const saveMood = (mood: DailyMood) => {
+  useEffect(() => {
+    void fetch('/api/mood', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<{ entries: MoodEntry[] }> : null)
+      .then((data) => {
+        const today = new Date().toDateString()
+        const entry = data?.entries.find((item) => new Date(item.date).toDateString() === today)
+        if (entry) { setSelected(entry.mood); setSaved(true) }
+      })
+      .catch(() => {})
+  }, [])
+
+  const saveMood = async (mood: DailyMood) => {
+    if (saving) return
+    setSaving(true)
+    setError('')
     setSelected(mood)
-    const today = new Date().toDateString()
-    const entry: MoodEntry = {
-      id: crypto.randomUUID(), userId: 'local', mood, triggerTag: null, note: null, date: new Date().toISOString(),
+    try {
+      const response = await fetch('/api/mood', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mood, date: new Date().toISOString() }) })
+      if (!response.ok) throw new Error('Unable to save check-in')
+      setSaved(true)
+    } catch {
+      setSaved(false)
+      setError('Your check-in could not be saved. Please try again.')
+    } finally {
+      setSaving(false)
     }
-    const entries = readEntries().filter((item) => new Date(item.date).toDateString() !== today)
-    localStorage.setItem('sane_mood_entries', JSON.stringify([entry, ...entries]))
-    setSaved(true)
   }
 
   const selectedOption = MOOD_OPTIONS.find((option) => option.value === selected)
@@ -63,7 +74,7 @@ export default function MoodCheckIn({ onTalk }: { onTalk?: (mood: DailyMood) => 
       </div>
 
       <div className="grid grid-cols-5 gap-2 sm:gap-3" role="radiogroup" aria-label="Today's mood">
-        {MOOD_OPTIONS.map((option) => {
+        {MOOD_OPTIONS.map((option, index) => {
           const isSelected = option.value === selected
           return (
             <motion.button
@@ -71,8 +82,18 @@ export default function MoodCheckIn({ onTalk }: { onTalk?: (mood: DailyMood) => 
               type="button"
               role="radio"
               aria-checked={isSelected}
+              disabled={saving}
               aria-label={`Feeling ${option.label}`}
               onClick={() => saveMood(option.value)}
+              onKeyDown={(event) => {
+                if (!['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(event.key)) return
+                event.preventDefault()
+                const nextIndex = event.key === 'ArrowRight' || event.key === 'ArrowDown'
+                  ? (index + 1) % MOOD_OPTIONS.length
+                  : (index - 1 + MOOD_OPTIONS.length) % MOOD_OPTIONS.length
+                const nextButton = event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[nextIndex]
+                nextButton?.focus()
+              }}
               whileTap={{ scale: 0.96 }}
               className={`min-w-0 min-h-[76px] rounded-xl border px-1 py-3 flex flex-col items-center justify-center gap-1 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${isSelected ? 'border-primary bg-primary-light text-primary' : 'border-border bg-surface text-gray-text hover:border-primary-mid hover:text-dark'}`}
             >
@@ -82,6 +103,7 @@ export default function MoodCheckIn({ onTalk }: { onTalk?: (mood: DailyMood) => 
           )
         })}
       </div>
+      {error && <p className="mt-3 text-sm text-red-600" role="alert">{error}</p>}
 
       {selectedOption && (
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-5 pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

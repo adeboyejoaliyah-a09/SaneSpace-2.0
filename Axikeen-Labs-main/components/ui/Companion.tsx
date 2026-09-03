@@ -11,7 +11,6 @@ import {
   MessageCircle,
   Mic,
   Pause,
-  Radio,
   Sparkles,
   Volume2,
   WifiOff,

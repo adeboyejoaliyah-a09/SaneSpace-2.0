@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { cookies } from 'next/headers'
+import { isSessionRevoked } from '@/lib/sessionStore'
 
 export type SessionUser = {
   id: string
@@ -47,6 +48,7 @@ export function createSessionToken(user: SessionUser): string {
   const secret = getAuthSecret()
 
   const payload = {
+    jti: crypto.randomUUID(),
     id: user.id,
     email: user.email ?? null,
     name: user.name ?? null,
@@ -63,6 +65,7 @@ export function createSessionToken(user: SessionUser): string {
 
 export function verifySessionToken(token: string | null | undefined): SessionUser | null {
   if (!token) return null
+  if (isSessionRevoked(token)) return null
 
   const [encodedPayload, signature] = token.split('.')
   if (!encodedPayload || !signature) return null

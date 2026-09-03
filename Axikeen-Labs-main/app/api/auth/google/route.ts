@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -22,5 +23,16 @@ export async function GET() {
   authUrl.searchParams.set('access_type', 'offline')
   authUrl.searchParams.set('prompt', 'select_account')
 
-  return NextResponse.redirect(authUrl.toString())
+  const state = crypto.randomBytes(32).toString('hex')
+  authUrl.searchParams.set('state', state)
+  const response = NextResponse.redirect(authUrl.toString())
+  response.cookies.set('sanespace_google_oauth_state', state, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/api/auth/google',
+    maxAge: 60 * 10,
+  })
+
+  return response
 }

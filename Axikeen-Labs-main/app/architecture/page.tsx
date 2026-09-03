@@ -9,6 +9,7 @@ import {
   MessageCircle, Globe, Shield, Brain, Layers, Zap, Sparkles, CheckCircle, ArrowLeft,
 } from 'lucide-react'
 import { assessCrisis, type CrisisAssessment, type CrisisTier } from '@/lib/crisisDetection'
+import { LANGUAGE_DEFINITIONS } from '@/lib/languages'
 import type { Message } from '@/lib/types'
 
 // ─── Types & constants ─────────────────────────────────────────────────────
@@ -48,7 +49,7 @@ const STAGE_DELAYS = [0, 300, 600, 900, 1200, 1500, 1800, 2100]
 const STATS = [
   { label: 'Pipeline Steps', value: '8' },
   { label: 'Avg Response', value: '~400ms' },
-  { label: 'Language Profiles', value: '5' },
+  { label: 'Language Profiles', value: String(LANGUAGE_DEFINITIONS.length) },
   { label: 'Crisis Tiers', value: '4' },
 ]
 

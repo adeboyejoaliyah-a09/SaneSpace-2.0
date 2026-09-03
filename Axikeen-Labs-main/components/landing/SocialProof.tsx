@@ -39,7 +39,7 @@ export default function SocialProof() {
             Real Stories
           </span>
           <h2 className="font-heading text-4xl md:text-5xl font-bold text-white">
-            Nigerians are finding their place here
+            People everywhere are finding their place here
           </h2>
         </ScrollReveal>
 

@@ -117,29 +117,34 @@ export default function ChatPage() {
       }
     } catch {}
 
-    try {
-      const stored = localStorage.getItem('sane_conversations')
-      if (stored) {
-        const convs = JSON.parse(stored) as Conversation[]
-        if (convs.length > 0) {
-          setConversations(convs)
-          setActiveConvId(convs[0].id)
-          setMessages(convs[0].messages)
-          setTitleValue(convs[0].title)
-          return
+    void (async () => {
+      try {
+        const response = await fetch('/api/conversations', { cache: 'no-store' })
+        if (!response.ok) throw new Error('Unable to load conversations')
+        const data = await response.json() as { conversations: Conversation[] }
+        if (data.conversations.length > 0) {
+          const first = data.conversations[0]
+          setConversations(data.conversations)
+          setActiveConvId(first.id)
+          setMessages(first.messages)
+          setTitleValue(first.title)
+        } else {
+          await createConversation(true)
         }
+      } catch {
+        setErrorMessage('Unable to load your conversations right now.')
       }
-    } catch {}
 
-    createConversation(true)
-
-    try {
-      const prefilled = localStorage.getItem('sane_prefilled_message')
-      if (prefilled) {
-        setInput(prefilled)
-        localStorage.removeItem('sane_prefilled_message')
-      }
-    } catch {}
+      try {
+        const prefilled = localStorage.getItem('sane_prefilled_message')
+        if (prefilled) {
+          setInput(prefilled)
+          localStorage.removeItem('sane_prefilled_message')
+        }
+      } catch {}
+    })()
+    // The initial load intentionally runs once for the authenticated session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -163,52 +168,40 @@ export default function ChatPage() {
 
   const firstName = user?.firstName || null
 
-  const createConversation = (replace = false) => {
-    const id = crypto.randomUUID()
-    const conv: Conversation = {
-      id,
-      userId: 'local',
-      title: 'New conversation',
-      mode: 'text',
-      createdAt: new Date().toISOString(),
-      messages: [],
-    }
-
+  const createConversation = async (replace = false) => {
     try {
-      const stored: Conversation[] = replace ? [] : JSON.parse(localStorage.getItem('sane_conversations') ?? '[]')
-      const next = [conv, ...stored]
-      localStorage.setItem('sane_conversations', JSON.stringify(next))
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'text' }),
+      })
+      if (!response.ok) throw new Error('Unable to create conversation')
+      const data = await response.json() as { conversation: Conversation }
+      const next = replace ? [data.conversation] : [data.conversation, ...conversations]
       setConversations(next)
+      setActiveConvId(data.conversation.id)
+      setMessages([])
+      setTitleValue(data.conversation.title)
     } catch {
-      setConversations([conv])
+      setErrorMessage('Unable to start a new conversation right now.')
+      return
     }
 
-    setActiveConvId(id)
-    setMessages([])
-    setTitleValue('New conversation')
     setErrorMessage('')
     setLastFailedText('')
     setShowMobileConvs(false)
   }
 
-  const saveConversation = (nextMessages: Message[], convId = activeConvId) => {
+  const saveConversation = async (nextMessages: Message[], convId = activeConvId) => {
     try {
-      const stored: Conversation[] = JSON.parse(localStorage.getItem('sane_conversations') ?? '[]')
-      const idx = stored.findIndex((conversation) => conversation.id === convId)
-      const updated: Conversation = {
-        id: convId,
-        userId: 'local',
-        title: generateTitle(nextMessages),
-        mode: 'text',
-        createdAt: stored[idx]?.createdAt ?? new Date().toISOString(),
-        messages: nextMessages,
-      }
-
-      if (idx >= 0) stored[idx] = updated
-      else stored.unshift(updated)
-
-      localStorage.setItem('sane_conversations', JSON.stringify(stored))
-      setConversations([...stored])
+      const response = await fetch(`/api/conversations/${convId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: generateTitle(nextMessages), messages: nextMessages }),
+      })
+      if (!response.ok) throw new Error('Unable to save conversation')
+      const data = await response.json() as { conversation: Conversation }
+      setConversations((current) => current.map((conversation) => conversation.id === convId ? data.conversation : conversation))
     } catch {}
   }
 
@@ -221,18 +214,20 @@ export default function ChatPage() {
     setShowMobileConvs(false)
   }
 
-  const handleTitleSave = () => {
+  const handleTitleSave = async () => {
     setIsEditingTitle(false)
     const title = titleValue.trim() || 'New conversation'
     setTitleValue(title)
 
     try {
-      const stored: Conversation[] = JSON.parse(localStorage.getItem('sane_conversations') ?? '[]')
-      const updated = stored.map((conversation) => (
-        conversation.id === activeConvId ? { ...conversation, title } : conversation
-      ))
-      localStorage.setItem('sane_conversations', JSON.stringify(updated))
-      setConversations(updated)
+      const response = await fetch(`/api/conversations/${activeConvId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      })
+      if (!response.ok) throw new Error('Unable to save title')
+      const data = await response.json() as { conversation: Conversation }
+      setConversations((current) => current.map((conversation) => conversation.id === activeConvId ? data.conversation : conversation))
     } catch {}
   }
 
@@ -277,16 +272,20 @@ export default function ChatPage() {
     setLastFailedText('')
 
     try {
-      const prefs = JSON.parse(localStorage.getItem('sane_user_preferences') ?? '{}')
+      const profileResponse = await fetch('/api/profile', { cache: 'no-store' })
+      const profileData = profileResponse.ok
+        ? await profileResponse.json() as { profile?: { specialisation?: string | null; languageProfile?: string | null; firstName?: string | null } }
+        : {}
+      const profile = profileData.profile
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: nextMessages,
-          specialisation: prefs.specialisation ?? '',
-          languageProfile: prefs.languageProfile ?? 'Neutral / International',
+          specialisation: profile?.specialisation ?? '',
+          languageProfile: profile?.languageProfile ?? 'Neutral / International',
           activeMode,
-          userName: prefs.firstName ?? user?.firstName ?? 'there',
+          userName: profile?.firstName ?? user?.firstName ?? 'there',
         }),
       })
 
@@ -328,7 +327,7 @@ export default function ChatPage() {
 
       const finalMessages = [...nextMessages, aiMsg]
       setMessages(finalMessages)
-      saveConversation(finalMessages)
+      void saveConversation(finalMessages)
       saveCrisisEvent(data.crisisEvent)
 
       if (data.detectedMode && data.detectedMode !== activeMode) {

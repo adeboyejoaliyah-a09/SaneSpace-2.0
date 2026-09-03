@@ -11,7 +11,7 @@ import { useSaneUser } from '@/hooks/useSaneUser'
 const navLinks = [
   { label: 'About', href: '#about' },
   { label: 'How It Works', href: '#how-it-works' },
-  { label: 'For Nigerians', href: '#for-nigerians' },
+  { label: 'For the world', href: '#how-it-works' },
 ]
 
 export default function Navbar() {

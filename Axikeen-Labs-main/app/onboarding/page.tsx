@@ -9,6 +9,7 @@ import MoodEmoji from '@/components/ui/MoodEmoji'
 import PillChip from '@/components/ui/PillChip'
 import Button from '@/components/ui/Button'
 import TypingIndicator from '@/components/ui/TypingIndicator'
+import { LANGUAGE_DEFINITIONS, normalizeLanguageId } from '@/lib/languages'
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -41,13 +42,12 @@ const MODES = [
   { emoji: '💼', title: 'Work & Career', desc: 'Burnout, ambition, workplace stress' },
 ]
 
-const LANGUAGES = [
-  { emoji: '🇳🇬', title: 'Nigerian Pidgin', desc: "I dey, abeg, wahala — SaneSpace gets it" },
-  { emoji: '🗣️', title: 'Lagos English', desc: 'Fast, code-switching, street-smart' },
-  { emoji: '🎓', title: 'Student English', desc: 'Campus life, mixed formal and informal' },
-  { emoji: '🏠', title: 'Nigerian Home English', desc: 'Proper Nigerian English, family-oriented' },
-  { emoji: '🌍', title: 'Neutral / International', desc: 'Standard English, no slang' },
-]
+const LANGUAGES = LANGUAGE_DEFINITIONS.map((language) => ({
+  id: language.id,
+  emoji: language.emoji,
+  title: language.label,
+  desc: language.culturalContext === 'nigerian' ? 'Nigerian language and cultural context' : 'Language and cultural context for your world',
+}))
 
 type ClosingMsg = { line1: string; body: string; disclaimer?: string }
 
@@ -157,13 +157,14 @@ function ModeCard({
   onClick: () => void
 }) {
   return (
-    <motion.div
+    <motion.button
+      type="button"
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && onClick()}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onClick())}
       className={`relative flex items-center gap-3 p-4 rounded-2xl border cursor-pointer
         transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary
         ${
@@ -192,7 +193,7 @@ function ModeCard({
         <p className="font-semibold text-dark text-sm leading-tight">{title}</p>
         <p className="text-gray-text text-xs mt-0.5 leading-relaxed">{desc}</p>
       </div>
-    </motion.div>
+    </motion.button>
   )
 }
 
@@ -206,6 +207,8 @@ export default function OnboardingPage() {
   const [selections, setSelections] = useState<Selections>(INITIAL_SELECTIONS)
   const [isTyping, setIsTyping] = useState(true)
   const [showContent, setShowContent] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   // refs to manage timers
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -240,7 +243,10 @@ export default function OnboardingPage() {
           selections: Selections
         }
         setCurrentStep(s)
-        setSelections(sel)
+        setSelections({
+          ...sel,
+          languageProfile: sel.languageProfile ? normalizeLanguageId(sel.languageProfile) : null,
+        })
       }
     } catch {
       // ignore storage errors
@@ -294,25 +300,41 @@ export default function OnboardingPage() {
     goToStep(4, 500)
   }
 
-  const handleLanguageSelect = (title: string) => {
-    setSelections((prev) => ({ ...prev, languageProfile: title }))
+  const handleLanguageSelect = (id: string) => {
+    setSelections((prev) => ({ ...prev, languageProfile: normalizeLanguageId(id) }))
     goToStep(5, 500)
   }
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
+    setIsSaving(true)
+    setSaveError('')
+    const profile = {
+      specialisation: selections.specialisation,
+      languageProfile: normalizeLanguageId(selections.languageProfile),
+      currentMood: selections.currentMood,
+      challenges: selections.challenges,
+      onboardingComplete: true,
+      ...(user?.firstName ? { firstName: user.firstName } : {}),
+    }
+
     try {
-      const prefs = {
-        specialisation: selections.specialisation,
-        languageProfile: selections.languageProfile,
-        currentMood: selections.currentMood,
-        challenges: selections.challenges,
-        onboardingComplete: true,
-        ...(user?.firstName ? { firstName: user.firstName } : {}),
-      }
-      localStorage.setItem('sane_user_preferences', JSON.stringify(prefs))
-      localStorage.removeItem('sane_onboarding_progress')
-    } catch {}
-    router.push('/dashboard')
+      const response = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile),
+      })
+      if (!response.ok) throw new Error('Unable to save your preferences')
+
+      try {
+        localStorage.setItem('sane_user_preferences', JSON.stringify(profile))
+        localStorage.removeItem('sane_onboarding_progress')
+      } catch {}
+      router.push('/dashboard')
+    } catch {
+      setSaveError('We could not save your space yet. Check your connection and try again.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   // ── Derived values ───────────────────────────────────────────────────────
@@ -328,7 +350,7 @@ export default function OnboardingPage() {
   const closing = selections.specialisation ? CLOSING[selections.specialisation] : null
   const summaryMood = MOODS.find((m) => m.label === selections.currentMood)
   const summaryMode = MODES.find((m) => m.title === selections.specialisation)
-  const summaryLang = LANGUAGES.find((l) => l.title === selections.languageProfile)
+  const summaryLang = LANGUAGES.find((l) => l.id === normalizeLanguageId(selections.languageProfile))
 
   // ────────────────────────────────────────────────────────────────────────
   return (
@@ -489,8 +511,8 @@ export default function OnboardingPage() {
                           emoji={lang.emoji}
                           title={lang.title}
                           desc={lang.desc}
-                          selected={selections.languageProfile === lang.title}
-                          onClick={() => handleLanguageSelect(lang.title)}
+                          selected={selections.languageProfile === lang.id}
+                          onClick={() => handleLanguageSelect(lang.id)}
                         />
                       ))}
                     </motion.div>
@@ -574,9 +596,10 @@ export default function OnboardingPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 1.2, duration: 0.4, ease: 'easeOut' }}
                       >
-                        <Button variant="primary" size="lg" onClick={handleComplete}>
-                          Enter SaneSpace →
+                        <Button variant="primary" size="lg" onClick={handleComplete} disabled={isSaving}>
+                          {isSaving ? 'Saving...' : 'Enter SaneSpace →'}
                         </Button>
+                        {saveError && <p className="mt-3 text-sm text-red-600" role="alert">{saveError}</p>}
                       </motion.div>
                     </motion.div>
                   )}

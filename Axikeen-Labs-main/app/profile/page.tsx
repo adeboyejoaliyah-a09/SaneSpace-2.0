@@ -10,6 +10,7 @@ import Button from '@/components/ui/Button'
 import ScrollReveal from '@/components/ui/ScrollReveal'
 import { fadeUp } from '@/lib/animations'
 import type { StoredUserMemory } from '@/lib/memoryExtraction'
+import { LANGUAGE_DEFINITIONS, getLanguageLabel, normalizeLanguageId } from '@/lib/languages'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -22,13 +23,12 @@ const SPEC_MODES = [
   { key: 'work', emoji: '💼', title: 'Work & Career', desc: 'Burnout & ambition' },
 ]
 
-const LANG_PROFILES = [
-  { key: 'pidgin', emoji: '🇳🇬', title: 'Nigerian Pidgin', desc: "Dey, abeg, wahala — I get you" },
-  { key: 'lagos', emoji: '🗣️', title: 'Lagos English', desc: 'Fast, real, code-switching' },
-  { key: 'student', emoji: '🎓', title: 'Student English', desc: 'Campus life mixed' },
-  { key: 'home', emoji: '🏠', title: 'Nigerian Home English', desc: 'Formal, family-oriented' },
-  { key: 'neutral', emoji: '🌍', title: 'Neutral / International', desc: 'Standard English' },
-]
+const LANG_PROFILES = LANGUAGE_DEFINITIONS.map((language) => ({
+  key: language.id,
+  emoji: language.emoji,
+  title: language.label,
+  desc: language.culturalContext === 'nigerian' ? 'Nigerian language and cultural context' : 'Language and cultural context for your world',
+}))
 
 const SPEC_LABEL_TO_KEY: Record<string, string> = {
   'Therapy Support': 'therapy', 'Life Coaching': 'coaching',
@@ -39,16 +39,6 @@ const SPEC_KEY_TO_LABEL: Record<string, string> = {
   therapy: 'Therapy Support', coaching: 'Life Coaching',
   talk: 'Just to Talk', student: 'Student Support',
   chill: 'Chill / Play', work: 'Work & Career',
-}
-const LANG_LABEL_TO_KEY: Record<string, string> = {
-  'Nigerian Pidgin': 'pidgin', 'Lagos English': 'lagos',
-  'Student English': 'student', 'Nigerian Home English': 'home',
-  'Neutral / International': 'neutral',
-}
-const LANG_KEY_TO_LABEL: Record<string, string> = {
-  pidgin: 'Nigerian Pidgin', lagos: 'Lagos English',
-  student: 'Student English', home: 'Nigerian Home English',
-  neutral: 'Neutral / International',
 }
 
 const REMINDER_TIMES = ['8:00 AM', '9:00 AM', '12:00 PM', '6:00 PM', '9:00 PM']
@@ -189,7 +179,7 @@ export default function ProfilePage() {
 
   const [preferences, setPreferences] = useState({
     specialisation: 'talk',
-    languageProfile: 'neutral',
+    languageProfile: 'english',
   })
   const [isSaving, setIsSaving] = useState(false)
   const [savedSection, setSavedSection] = useState<string | null>(null)
@@ -198,6 +188,8 @@ export default function ProfilePage() {
   const [memoryEnabled, setMemoryEnabled] = useState(true)
   const [editingMemoryId, setEditingMemoryId] = useState<string | null>(null)
   const [editingMemoryContent, setEditingMemoryContent] = useState('')
+  const deleteButtonRef = useRef<HTMLButtonElement | null>(null)
+  const deleteDialogRef = useRef<HTMLDivElement | null>(null)
 
   const [isEditingPersonal, setIsEditingPersonal] = useState(false)
   const [editName, setEditName] = useState('')
@@ -219,25 +211,24 @@ export default function ProfilePage() {
       ) as Record<string, string>
       const specKey =
         SPEC_LABEL_TO_KEY[saved.specialisation] ?? saved.specialisation ?? 'talk'
-      const langKey =
-        LANG_LABEL_TO_KEY[saved.languageProfile] ?? saved.languageProfile ?? 'neutral'
+      const langKey = normalizeLanguageId(saved.languageProfile)
       setPreferences({ specialisation: specKey, languageProfile: langKey })
       setWellnessGoal(saved.wellnessGoal ?? '')
       setDisplayWellnessGoal(saved.wellnessGoal || 'Not set')
     } catch {}
 
-    try {
-      const moodE = JSON.parse(
-        localStorage.getItem('sane_mood_entries') ?? '[]',
-      ) as { date: string }[]
-      const convs = JSON.parse(localStorage.getItem('sane_conversations') ?? '[]') as unknown[]
-      setStats((prev) => ({
-        ...prev,
-        checkIns: moodE.length,
-        streak: calcStreak(moodE),
-        conversations: convs.length,
-      }))
-    } catch {}
+    void fetch('/api/mood', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<{ entries: { date: string }[] }> : null)
+      .then((data) => {
+        const entries = data?.entries ?? []
+        setStats((prev) => ({ ...prev, checkIns: entries.length, streak: calcStreak(entries) }))
+      })
+      .catch(() => {})
+
+    void fetch('/api/conversations', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<{ conversations: unknown[] }> : null)
+      .then((data) => { if (data) setStats((prev) => ({ ...prev, conversations: data.conversations.length })) })
+      .catch(() => {})
 
     void fetch('/api/memory', { cache: 'no-store' })
       .then((response) => response.ok ? response.json() as Promise<{ enabled: boolean; memories: StoredUserMemory[] }> : null)
@@ -246,6 +237,21 @@ export default function ProfilePage() {
           setMemoryEntries(data.memories)
           setMemoryEnabled(data.enabled)
         }
+      })
+      .catch(() => {})
+
+    void fetch('/api/profile', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<{ profile?: { specialisation?: string | null; languageProfile?: string | null; wellnessGoal?: string | null; firstName?: string | null; lastName?: string | null } }> : null)
+      .then((data) => {
+        const profile = data?.profile
+        if (!profile) return
+        setPreferences({
+          specialisation: SPEC_LABEL_TO_KEY[profile.specialisation ?? ''] ?? profile.specialisation ?? 'talk',
+          languageProfile: normalizeLanguageId(profile.languageProfile),
+        })
+        setWellnessGoal(profile.wellnessGoal ?? '')
+        setDisplayWellnessGoal(profile.wellnessGoal || 'Not set')
+        if (profile.firstName || profile.lastName) setEditName(`${profile.firstName ?? ''} ${profile.lastName ?? ''}`.trim())
       })
       .catch(() => {})
   }, [])
@@ -260,6 +266,33 @@ export default function ProfilePage() {
       : 1
     setStats((prev) => ({ ...prev, daysSince: days }))
   }, [user])
+
+  useEffect(() => {
+    if (!showDeleteModal) {
+      deleteButtonRef.current?.focus()
+      deleteButtonRef.current = null
+      return
+    }
+    const focusable = () => Array.from(deleteDialogRef.current?.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') ?? [])
+    focusable()[0]?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowDeleteModal(false)
+      if (event.key !== 'Tab') return
+      const elements = focusable()
+      if (elements.length === 0) return
+      const first = elements[0]
+      const last = elements[elements.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [showDeleteModal])
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const firstName = user?.firstName ?? 'User'
@@ -285,16 +318,12 @@ export default function ProfilePage() {
       const nextFirstName = fn || user?.firstName || 'User'
       const nextLastName = lnParts.join(' ')
 
-      if (user && editName && editName !== fullName) {
-        const saved = JSON.parse(localStorage.getItem('sane_user_preferences') ?? '{}')
-        saved.firstName = nextFirstName
-        saved.lastName = nextLastName
-        localStorage.setItem('sane_user_preferences', JSON.stringify(saved))
-      }
-
-      const saved = JSON.parse(localStorage.getItem('sane_user_preferences') ?? '{}')
-      saved.wellnessGoal = wellnessGoal
-      localStorage.setItem('sane_user_preferences', JSON.stringify(saved))
+      const response = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firstName: nextFirstName, lastName: nextLastName, wellnessGoal }),
+      })
+      if (!response.ok) throw new Error('Unable to save personal details')
       setDisplayWellnessGoal(wellnessGoal || 'Not set')
     } catch (err) { console.error(err) }
     setTimeout(() => {
@@ -305,15 +334,18 @@ export default function ProfilePage() {
   }
 
   // ── Save preferences ──────────────────────────────────────────────────────
-  const handleSavePreferences = () => {
+  const handleSavePreferences = async () => {
     setIsSaving(true)
     try {
-      const saved = JSON.parse(localStorage.getItem('sane_user_preferences') ?? '{}')
-      saved.specialisation =
-        SPEC_KEY_TO_LABEL[preferences.specialisation] ?? preferences.specialisation
-      saved.languageProfile =
-        LANG_KEY_TO_LABEL[preferences.languageProfile] ?? preferences.languageProfile
-      localStorage.setItem('sane_user_preferences', JSON.stringify(saved))
+      const response = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          specialisation: SPEC_KEY_TO_LABEL[preferences.specialisation] ?? preferences.specialisation,
+          languageProfile: getLanguageLabel(preferences.languageProfile),
+        }),
+      })
+      if (!response.ok) throw new Error('Unable to save preferences')
     } catch {}
     setTimeout(() => {
       setIsSaving(false)
@@ -328,9 +360,8 @@ export default function ProfilePage() {
         .filter((k) => k.startsWith('sane_'))
         .forEach((k) => localStorage.removeItem(k))
     } catch {}
-    await fetch('/api/memory', { method: 'DELETE' })
-    await fetch('/api/auth/logout', { method: 'POST' })
-    router.push('/')
+    const response = await fetch('/api/account', { method: 'DELETE' })
+    if (response.ok) router.push('/')
   }
 
   const handleDeleteMemory = async (memoryId: string) => {
@@ -728,7 +759,7 @@ export default function ProfilePage() {
                 <Button
                   variant="danger"
                   size="sm"
-                  onClick={() => setShowDeleteModal(true)}
+                  onClick={() => { deleteButtonRef.current = document.activeElement as HTMLButtonElement; setShowDeleteModal(true) }}
                 >
                   Delete →
                 </Button>
@@ -751,6 +782,10 @@ export default function ProfilePage() {
             className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
           >
             <motion.div
+              ref={deleteDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-account-title"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -758,7 +793,7 @@ export default function ProfilePage() {
               className="glass rounded-2xl p-6 max-w-sm w-full mx-4"
             >
               <p className="text-4xl text-center mb-3">⚠️</p>
-              <h3 className="font-semibold text-xl text-dark text-center">Are you sure?</h3>
+              <h3 id="delete-account-title" className="font-semibold text-xl text-dark text-center">Are you sure?</h3>
               <p className="text-sm text-gray-text text-center mt-2 leading-relaxed">
                 This will permanently delete your account and all your SaneSpace data.
                 This cannot be undone.

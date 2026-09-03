@@ -1,6 +1,8 @@
 import type { RiskLevel } from './riskClassifier'
+import { CRISIS_RESOURCES } from './crisisDetection'
+import { normalizeLanguageId } from './languages'
 
-export type LanguageProfileDetected = 'pidgin' | 'lagos' | 'student' | 'home' | 'neutral'
+export type LanguageProfileDetected = string
 export type CareResponseType = 'soft_care' | 'handoff_care' | 'urgent_care'
 
 export interface BuildCareModeResponseInput {
@@ -21,7 +23,7 @@ export interface CareModeResponse {
 }
 
 function mediumMessage(language: LanguageProfileDetected) {
-  if (language === 'pidgin' || language === 'student' || language === 'lagos') {
+  if (language === 'nigerian-pidgin' || language === 'student-english' || language === 'lagos-english') {
     return "I hear you. This thing sounds really heavy right now, and you don't have to rush to solve everything at once. Before anything else, try put both feet on the floor and take one slow breath in, then one slow breath out. Are you safe enough to pause with me for a moment?"
   }
 
@@ -29,7 +31,7 @@ function mediumMessage(language: LanguageProfileDetected) {
 }
 
 function highMessage(language: LanguageProfileDetected) {
-  if (language === 'pidgin' || language === 'student' || language === 'lagos') {
+  if (language === 'nigerian-pidgin' || language === 'student-english' || language === 'lagos-english') {
     return "I am really sorry it feels this heavy. I want us to pause normal advice for now and focus on your safety. Are you safe right now, and is there someone nearby you trust, like a friend, roommate, family member, course adviser, or campus support person, that you can contact now?"
   }
 
@@ -37,18 +39,21 @@ function highMessage(language: LanguageProfileDetected) {
 }
 
 function criticalMessage(language: LanguageProfileDetected) {
-  if (language === 'pidgin' || language === 'student' || language === 'lagos') {
-    return "I am really concerned about your safety right now. Please contact emergency help or someone close to you immediately, and try not to stay alone. If you can, call or message a trusted person now and tell them you need them with you."
+  const resources = `\n\nIf you may act on these thoughts or are in immediate danger, call emergency services now. In Nigeria, you can also contact:\n- ${CRISIS_RESOURCES.primary.name}: ${CRISIS_RESOURCES.primary.phone}\n- ${CRISIS_RESOURCES.women.name}: ${CRISIS_RESOURCES.women.phone}\n- ${CRISIS_RESOURCES.facility.name}: ${CRISIS_RESOURCES.facility.phone}`
+
+  if (language === 'nigerian-pidgin' || language === 'student-english' || language === 'lagos-english') {
+    return "I am really concerned about your safety right now. Please contact emergency help or someone close to you immediately, and try not to stay alone. If you can, call or message a trusted person now and tell them you need them with you." + resources
   }
 
-  return "I am really concerned about your safety right now. Please contact emergency help or someone near you immediately, and try not to stay alone. If you can, call or message a trusted person now and tell them you need them with you."
+  return "I am really concerned about your safety right now. Please contact emergency help or someone near you immediately, and try not to stay alone. If you can, call or message a trusted person now and tell them you need them with you." + resources
 }
 
 export function buildCareModeResponse(input: BuildCareModeResponseInput): CareModeResponse {
+  const language = normalizeLanguageId(input.languageProfileDetected)
   if (input.riskLevel === 'critical') {
     return {
       selectedMode: 'care',
-      message: criticalMessage(input.languageProfileDetected),
+      message: criticalMessage(language),
       showHumanHandoff: true,
       shouldLogCrisisEvent: true,
       responseType: 'urgent_care',
@@ -58,7 +63,7 @@ export function buildCareModeResponse(input: BuildCareModeResponseInput): CareMo
   if (input.riskLevel === 'high') {
     return {
       selectedMode: 'care',
-      message: highMessage(input.languageProfileDetected),
+      message: highMessage(language),
       showHumanHandoff: true,
       shouldLogCrisisEvent: true,
       responseType: 'handoff_care',
@@ -67,7 +72,7 @@ export function buildCareModeResponse(input: BuildCareModeResponseInput): CareMo
 
   return {
     selectedMode: 'care',
-    message: mediumMessage(input.languageProfileDetected),
+    message: mediumMessage(language),
     showHumanHandoff: false,
     shouldLogCrisisEvent: false,
     responseType: 'soft_care',

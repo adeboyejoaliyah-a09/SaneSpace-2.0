@@ -4,6 +4,7 @@ import {
   createReminder,
   getReminderById,
   listReminders,
+  updateReminder,
 } from './reminderStore'
 
 describe('reminder store', () => {
@@ -61,12 +62,25 @@ describe('reminder store', () => {
     expect(getReminderById('user-a', aReminder.id)?.title).toBe('A only')
     expect(getReminderById('user-b', aReminder.id)).toBeNull()
   })
+
+  it('preserves fields when applying a partial update', () => {
+    clearReminders('user-a')
+    const reminder = createReminder({
+      userId: 'user-a',
+      title: 'Original title',
+      description: 'Keep this description',
+      dueAt: new Date(Date.now() + 60000).toISOString(),
+    })
+
+    const updated = updateReminder('user-a', reminder.id, { status: 'cancelled' })
+    expect(updated).toMatchObject({ title: 'Original title', description: 'Keep this description', status: 'cancelled' })
+  })
 })
 
 describe('reminder validation', () => {
   it('rejects invalid reminder input shape', () => {
     expect(() => {
-      const invalid: any = null
+      const invalid: unknown = null
       if (!invalid || typeof invalid !== 'object') {
         throw new Error('Invalid input')
       }

@@ -9,6 +9,7 @@ import { extractEmotionalMemory } from '@/lib/memoryExtraction'
 import { generateSaneSpaceResponse } from '@/lib/ai/responseEngine'
 import { AUTH_COOKIE_NAME, getSessionUserFromToken } from '@/lib/auth'
 import { isMemoryEnabled, retrieveRelevantMemories, upsertUserMemories } from '@/lib/memoryStore'
+import { normalizeLanguageId } from '@/lib/languages'
 
 const VALID_MODES = new Set(['listening', 'coach', 'explorer', 'companion', 'care'])
 const MAX_MESSAGES = 40
@@ -138,7 +139,7 @@ export async function POST(req: NextRequest) {
         userMessage: lastMessage,
         riskScore: riskResult.riskScore,
         riskLevel: riskResult.riskLevel,
-        languageProfileDetected: languageProfile.toLowerCase().includes('pidgin') ? 'pidgin' : languageProfile.toLowerCase().includes('lagos') ? 'lagos' : languageProfile.toLowerCase().includes('student') ? 'student' : languageProfile.toLowerCase().includes('home') ? 'home' : 'neutral',
+        languageProfileDetected: normalizeLanguageId(languageProfile),
         triggersDetected: riskResult.matchedSignals,
         memoryUsed: [],
       })

@@ -1,4 +1,6 @@
 import Database from 'better-sqlite3'
+import fs from 'fs'
+import path from 'path'
 
 export type ReminderStatus = 'pending' | 'completed' | 'dismissed' | 'cancelled'
 export type ReminderSource = 'conversation' | 'memory' | 'user_created' | 'daily_plan'
@@ -15,7 +17,8 @@ export type Reminder = {
   updatedAt: string
 }
 
-const dbFile = process.env.DB_FILE || './data/sanespace.db'
+const dbFile = process.env.SANESPACE_DATABASE_PATH || path.join(process.cwd(), 'data', 'sanespace.db')
+fs.mkdirSync(path.dirname(dbFile), { recursive: true })
 const db = new Database(dbFile)
 
 db.exec(`
@@ -98,7 +101,7 @@ export function updateReminder(
 
   const next: Reminder = {
     ...current,
-    ...patch,
+    ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)),
     dueAt: patch.dueAt ? new Date(patch.dueAt).toISOString() : current.dueAt,
     updatedAt: new Date().toISOString(),
   }

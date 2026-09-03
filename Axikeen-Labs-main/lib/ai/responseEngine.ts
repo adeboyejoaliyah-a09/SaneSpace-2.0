@@ -2,6 +2,8 @@ import { buildContextBundle } from '@/lib/ai/context'
 import { invokeSaneSpaceProvider } from '@/lib/ai/providers'
 import type { Message } from '@/lib/types'
 import type { StoredUserMemory } from '@/lib/memoryExtraction'
+import { adaptResponseForLanguage } from '@/lib/ai/translation'
+import { getLanguageDefinition } from '@/lib/languages'
 
 export interface GenerateResponseInput {
   messages: Message[]
@@ -13,6 +15,7 @@ export interface GenerateResponseInput {
 
 export function buildSaneSpaceSystemPrompt(input: GenerateResponseInput) {
   const bundle = buildContextBundle(input)
+  const language = getLanguageDefinition(bundle.languageProfile)
 
   return `
 You are SaneSpace, a personal AI companion that prioritizes the person before the task.
@@ -50,7 +53,9 @@ Communication principles:
 - If safety risk is material, provide proportional guidance and real-world support. 
 - Keep the final answer clear, human, and not overly long.
 - Continue the user's thread naturally.
-- Language preference: ${bundle.languageProfile}.
+- Language preference: ${bundle.languageId}.
+- Locale: ${language.locale}.
+- Direct generation is preferred when you can reliably respond in the requested language. Translation is an optional fallback for ${language.label}; never translate safety instructions away from their meaning.
 - Domain in focus: ${bundle.domain}.
 - Specialisation: ${bundle.specialisation}.
 
@@ -77,8 +82,10 @@ export async function generateSaneSpaceResponse(input: GenerateResponseInput) {
     messages: providerMessages,
   })
 
+  const adaptedContent = await adaptResponseForLanguage(result.content, input.languageProfile)
+
   return {
-    content: result.content,
+    content: adaptedContent,
     provider: result.provider,
     context: bundle,
   }

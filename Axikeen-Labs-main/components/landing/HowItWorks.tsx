@@ -27,7 +27,7 @@ const features = [
     icon: Globe,
     iconColor: 'text-primary',
     title: 'Understands your world',
-    body: 'SaneSpace works with Nigerian English, Pidgin, student language, and cultural context so you can communicate naturally.',
+    body: 'From Nigerian English and Pidgin to the many ways people communicate around the world, SaneSpace adapts to language, culture, and context so you can speak naturally.',
     tag: 'Language and cultural intelligence',
     tagColor: 'text-primary bg-primary-light',
   },
@@ -45,7 +45,7 @@ export default function HowItWorks() {
             Built Different
           </span>
           <h2 className="font-heading text-4xl md:text-5xl font-bold text-dark mb-4">
-            Built different. For us.
+            Built different. For the world.
           </h2>
           <p className="text-gray-text text-lg max-w-md mx-auto">
             Three things that make SaneSpace unlike anything you&apos;ve tried.

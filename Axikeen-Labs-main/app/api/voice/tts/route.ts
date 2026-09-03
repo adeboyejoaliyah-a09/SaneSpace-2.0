@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   const sessionUser = sessionToken ? await getSessionUserFromToken(sessionToken) : null
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json().catch(() => null) as { text?: string; voiceId?: string } | null
+  const body = await req.json().catch(() => null) as { text?: string; voiceId?: string; languageCode?: string } | null
   const text = body?.text?.trim()
   const voiceId = body?.voiceId
 
@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         text,
         model_id: 'eleven_turbo_v2_5',
+        ...(body?.languageCode ? { language_code: body.languageCode } : {}),
         voice_settings: { stability: 0.5, similarity_boost: 0.75 },
       }),
     })

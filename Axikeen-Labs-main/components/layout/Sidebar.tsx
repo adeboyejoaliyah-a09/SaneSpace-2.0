@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard,
   MessageCircle,
@@ -33,6 +34,13 @@ interface SidebarProps {
 
 export default function Sidebar({ userName = 'User' }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.replace('/sign-in')
+    router.refresh()
+  }
 
   return (
     <>
@@ -79,6 +87,8 @@ export default function Sidebar({ userName = 'User' }: SidebarProps) {
               <p className="text-sm font-medium text-dark truncate">{userName}</p>
             </div>
             <button
+              type="button"
+              onClick={() => void handleLogout()}
               className="text-gray-400 hover:text-red-500 transition-colors p-1"
               aria-label="Logout"
             >

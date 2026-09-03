@@ -24,7 +24,19 @@ export async function middleware(request: NextRequest) {
 
   const isAuthPage = pathname === '/sign-in' || pathname === '/sign-up'
 
-  if (!user && !isPublic && !pathname.startsWith('/api/auth/')) {
+  let sessionIsRevoked = false
+  if (user && !isPublic && !pathname.startsWith('/api/auth/')) {
+    const sessionResponse = await fetch(new URL('/api/auth/session', request.url), {
+      headers: { cookie: request.headers.get('cookie') ?? '' },
+    }).catch(() => null)
+    if (!sessionResponse?.ok) sessionIsRevoked = true
+    else {
+      const session = await sessionResponse.json().catch(() => null) as { user?: unknown } | null
+      sessionIsRevoked = !session?.user
+    }
+  }
+
+  if ((!user || sessionIsRevoked) && !isPublic && !pathname.startsWith('/api/auth/')) {
     const signInUrl = new URL('/sign-in', request.url)
     return NextResponse.redirect(signInUrl)
   }

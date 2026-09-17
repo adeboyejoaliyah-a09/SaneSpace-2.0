@@ -21,4 +21,19 @@ describe('language and cultural context separation', () => {
     expect(bundle.culturalContext).toContain('Nigerian English')
     expect(bundle.culturalContext).toContain('without forcing slang')
   })
+
+  it('surfaces the user recent mood check-in in emotional context', () => {
+    const bundle = buildContextBundle({
+      messages: [message],
+      languageProfile: 'Global English',
+      recentMood: { mood: 'Low', triggerTag: 'Deadlines', date: '2026-09-03T08:00:00.000Z' },
+    })
+    expect(bundle.emotionalContext).toContain('Low')
+    expect(bundle.emotionalContext).toContain('Deadlines')
+  })
+
+  it('omits mood context when no check-in exists', () => {
+    const bundle = buildContextBundle({ messages: [message], languageProfile: 'Global English' })
+    expect(bundle.emotionalContext).not.toContain('checked in feeling')
+  })
 })

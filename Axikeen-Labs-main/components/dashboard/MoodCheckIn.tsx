@@ -47,13 +47,17 @@ export default function MoodCheckIn({ onTalk }: { onTalk?: (mood: DailyMood) => 
     if (saving) return
     setSaving(true)
     setError('')
+    const previous = selected
+    const previousSaved = saved
     setSelected(mood)
+    setSaved(false)
     try {
       const response = await fetch('/api/mood', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mood, date: new Date().toISOString() }) })
       if (!response.ok) throw new Error('Unable to save check-in')
       setSaved(true)
     } catch {
-      setSaved(false)
+      setSelected(previous)
+      setSaved(previousSaved)
       setError('Your check-in could not be saved. Please try again.')
     } finally {
       setSaving(false)

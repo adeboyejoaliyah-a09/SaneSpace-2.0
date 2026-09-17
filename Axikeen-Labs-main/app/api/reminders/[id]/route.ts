@@ -26,7 +26,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const current = getReminderById(user.id, params.id)
+  const current = await getReminderById(user.id, params.id)
   if (!current) {
     return NextResponse.json({ error: 'Reminder not found' }, { status: 404 })
   }
@@ -49,7 +49,7 @@ export async function PATCH(
   const status = typeof body.status === 'string' ? body.status as ReminderStatus : undefined
   const source = typeof body.source === 'string' ? body.source as ReminderSource : undefined
 
-  const next = updateReminder(user.id, params.id, {
+  const next = await updateReminder(user.id, params.id, {
     title: typeof body?.title === 'string' ? body.title.trim() : undefined,
     description:
       typeof body?.description === 'string'
@@ -76,7 +76,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const ok = deleteReminder(user.id, params.id)
+  const ok = await deleteReminder(user.id, params.id)
   if (!ok) {
     return NextResponse.json({ error: 'Reminder not found' }, { status: 404 })
   }

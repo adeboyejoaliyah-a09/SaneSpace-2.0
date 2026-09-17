@@ -42,6 +42,11 @@ export function listMoodEntries(userId: string) {
   return (database.prepare('SELECT * FROM mood_entries WHERE user_id = ? ORDER BY date DESC').all(userId) as Record<string, unknown>[]).map(rowToEntry)
 }
 
+export function latestMoodEntry(userId: string): MoodEntry | null {
+  const row = database.prepare('SELECT * FROM mood_entries WHERE user_id = ? ORDER BY date DESC LIMIT 1').get(userId) as Record<string, unknown> | undefined
+  return row ? rowToEntry(row) : null
+}
+
 export function createMoodEntry(input: Omit<MoodEntry, 'id'> & { id?: string }) {
   const entry: MoodEntry = { ...input, id: input.id ?? crypto.randomUUID() }
   database.prepare('INSERT INTO mood_entries (id, user_id, mood, trigger_tag, note, date) VALUES (?, ?, ?, ?, ?, ?)').run(entry.id, entry.userId, entry.mood, entry.triggerTag, entry.note, entry.date)

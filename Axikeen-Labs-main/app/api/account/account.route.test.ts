@@ -20,15 +20,15 @@ const userB = { id: 'account-delete-user-b', email: 'b@example.com' }
 const token = 'account-delete-session-token'
 
 describe('account deletion route', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mockedGetSessionUser.mockReset()
     cookieStore.get.mockReturnValue({ value: token })
     deleteUserProfile(userA.id)
     deleteUserProfile(userB.id)
     clearUserMemories(userA.id)
     clearUserMemories(userB.id)
-    clearReminders(userA.id)
-    clearReminders(userB.id)
+    await clearReminders(userA.id)
+    await clearReminders(userB.id)
     for (const userId of [userA.id, userB.id]) {
       for (const conversation of listConversations(userId)) deleteConversation(userId, conversation.id)
     }
@@ -38,7 +38,7 @@ describe('account deletion route', () => {
     mockedGetSessionUser.mockReturnValue(userA)
     updateUserProfile(userA.id, { firstName: 'A', onboardingComplete: true })
     createConversation(userA.id, { title: 'Private thread' })
-    createReminder({ userId: userA.id, title: 'Private reminder', dueAt: new Date(Date.now() + 1000).toISOString() })
+    await createReminder({ userId: userA.id, title: 'Private reminder', dueAt: new Date(Date.now() + 1000).toISOString() })
     upsertUserMemories(userA.id, [{ memoryType: 'pattern', category: 'work', content: 'Private memory', confidenceScore: 0.8, source: 'chat' }])
     updateUserProfile(userB.id, { firstName: 'B', onboardingComplete: true })
     createConversation(userB.id, { title: 'Keep this thread' })
@@ -48,7 +48,7 @@ describe('account deletion route', () => {
     expect(response.status).toBe(200)
     expect(getUserProfile(userA.id)).toBeNull()
     expect(listConversations(userA.id)).toEqual([])
-    expect(listReminders(userA.id)).toEqual([])
+    expect(await listReminders(userA.id)).toEqual([])
     expect(listUserMemories(userA.id)).toEqual([])
     expect(isSessionRevoked(token)).toBe(true)
     expect(getUserProfile(userB.id)?.firstName).toBe('B')

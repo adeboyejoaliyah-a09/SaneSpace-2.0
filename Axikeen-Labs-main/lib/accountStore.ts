@@ -2,6 +2,7 @@ import Database from 'better-sqlite3'
 import fs from 'fs'
 import path from 'path'
 import { createHash } from 'crypto'
+import { clearReminders } from './reminderStore'
 
 const databasePath = process.env.SANESPACE_DATABASE_PATH || path.join(process.cwd(), 'data', 'sanespace.db')
 fs.mkdirSync(path.dirname(databasePath), { recursive: true })
@@ -46,13 +47,16 @@ function tokenHash(token: string) {
   return createHash('sha256').update(token).digest('hex')
 }
 
-export function deleteAccount(userId: string, sessionToken: string) {
+export async function deleteAccount(userId: string, sessionToken: string) {
+  // Reminders may live in the production Postgres backend; clear them via the
+  // reminder store so ownership-scoped deletion works in both environments.
+  await clearReminders(userId)
+
   const transaction = database.transaction(() => {
     database.prepare('DELETE FROM user_profiles WHERE user_id = ?').run(userId)
     database.prepare('DELETE FROM user_memory_settings WHERE user_id = ?').run(userId)
     database.prepare('DELETE FROM user_memories WHERE user_id = ?').run(userId)
     database.prepare('DELETE FROM conversations WHERE user_id = ?').run(userId)
-    database.prepare('DELETE FROM reminders WHERE userId = ?').run(userId)
     database.prepare('DELETE FROM mood_entries WHERE user_id = ?').run(userId)
     database.prepare('INSERT OR IGNORE INTO revoked_sessions (token_hash, revoked_at) VALUES (?, ?)').run(tokenHash(sessionToken), new Date().toISOString())
   })

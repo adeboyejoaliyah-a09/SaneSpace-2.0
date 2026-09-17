@@ -343,16 +343,196 @@ This doesn't mean these things can never exist around the ecosystem. It means th
 
 ## 20. Current Technical Implementation
 
-The web product is being rebuilt on a full **Next.js 14 App Router** architecture:
+SaneSpace is currently being developed as a full-stack Next.js web application and is hosted on Vercel.
 
-- **Language/Framework:** TypeScript, Next.js 14 (App Router)
-- **Styling:** Tailwind CSS, with a complete internal component library
-- **Typography:** Bricolage Grotesque + Inter
-- **Hosting:** Live on Vercel
-- **Team:** Built alongside a collaborator, with frontend ownership on Aliyah's side
+### 20.1 Application Stack
 
-*(This section should be expanded with backend, data storage, and memory-system implementation details as those are finalized.)*
+- **Framework:** Next.js 14.2.29
+- **Architecture:** Next.js App Router
+- **Language:** TypeScript 5.9.3
+- **UI:** React 18.3.1
+- **Styling:** Tailwind CSS 3.4.19
+- **Animation:** Framer Motion
+- **3D/Visuals:** Three.js where appropriate
+- **Database:** SQLite
+- **Database Driver:** better-sqlite3
+- **Testing:** Vitest
+- **Hosting:** Vercel
+- **Authentication:** Custom Google OAuth/session implementation
+- **AI:** YarnGPT primary provider with Groq fallback
+- **Translation:** LibreTranslate abstraction
+- **Speech-to-Text:** Existing voice/STT integration
+- **Text-to-Speech:** ElevenLabs integration
+- **Memory:** SQLite-backed memory extraction and retrieval system
 
+### 20.2 Core API Architecture
+
+Current server routes include:
+
+- `/api/auth/session`
+- `/api/chat`
+- `/api/conversations`
+- `/api/mood`
+- `/api/profile`
+- `/api/reminders`
+- `/api/reminders/[id]`
+- `/api/voice/tts`
+
+The API layer is responsible for authentication, user-scoped data access, AI interaction, conversations, memory/context, mood data, reminders, and voice functionality.
+
+### 20.3 AI Context Architecture
+
+The AI system is being structured around multiple context layers rather than treating the underlying LLM as the entire product.
+
+Conceptually:
+
+```text
+User
+  ↓
+Conversation
+  ↓
+User Context
+  ↓
+Personal Memory
+  ↓
+Cultural / Language Context
+  ↓
+Emotional Context
+  ↓
+Domain Context
+  ↓
+Safety Context
+  ↓
+SaneSpace Response
+
+20.4 Memory
+
+SaneSpace currently uses SQLite-backed memory functionality.
+
+The long-term memory system should support:
+
+user preferences
+goals
+projects
+communication preferences
+ongoing situations
+relevant personal context
+user-selected memories
+
+Memory must remain user-controlled.
+
+The intended controls are:
+
+View
+Edit
+Delete
+Clear
+Disable
+20.5 Reminder Architecture
+
+Reminders use SQLite as the source of truth.
+
+The production architecture is designed around:
+
+SaneSpace UI
+    ↓
+Reminder API
+    ↓
+SQLite
+    ↓
+Scheduled trigger
+    ↓
+Reminder processor
+    ↓
+Atomic database claim
+    ↓
+Client / in-app reminder
+
+Because SaneSpace is hosted on Vercel, reminder processing must not depend on an in-process setInterval or persistent Node worker.
+
+The intended production trigger is a scheduled server-side request, such as Vercel Cron, calling a protected reminder-processing endpoint.
+
+The processor must:
+
+identify due reminders
+atomically claim them
+prevent duplicate execution
+process recurring reminders safely
+preserve timezone intent
+maintain reminder history
+
+The database remains the source of truth even when browser notifications are unavailable.
+
+20.6 Browser Notifications
+
+Browser notifications are an optional client-side enhancement.
+
+The server must not attempt to directly invoke browser APIs such as window.Notification.
+
+The MVP guaranteed behavior is:
+
+Reminder becomes due
+        ↓
+Server processes reminder
+        ↓
+Reminder remains persisted
+        ↓
+User opens SaneSpace
+        ↓
+SaneSpace surfaces the reminder
+
+Background push notifications through Web Push/service workers are a future capability and should not be represented as currently implemented.
+
+20.7 PWA
+
+The web application is intended to become installable as a Progressive Web App.
+
+PWA work should include:
+
+web app manifest
+installability
+appropriate icons
+mobile-friendly experience
+service worker where required
+offline/resilience improvements where appropriate
+
+PWA implementation should not compromise the existing web application or core AI functionality.
+
+20.8 Current Technical Principle
+
+SaneSpace should be built as a product layer rather than a thin interface around a foundation model.
+
+The architecture should allow:
+
+AI providers to change
+memory systems to evolve
+voice providers to change
+interfaces to evolve
+Web → Voice → Box to share the same underlying user context
+
+The user's relationship with SaneSpace should remain continuous even as the underlying implementation changes.
+
+20.9 Verification Standard
+
+Before a feature is considered production-ready:
+
+TypeScript must pass
+Production build must pass
+Relevant automated tests must pass
+Authentication and user ownership must be verified
+Mobile behavior must be checked
+Accessibility must be checked
+Failure states must be handled
+Existing functionality must remain intact
+
+The current application has established automated verification through TypeScript, production builds, and Vitest tests. New functionality should extend rather than bypass these checks.
+
+
+That section will make your PRD **match the actual codebase much more closely** instead of having the PRD describe an idealized SaneSpace.
+
+One other thing: I searched your Library for an actual file named `sanespace.md`, but it wasn't available there, so I **wouldn't overwrite or claim to have modified that file** from here. The search did find other SaneSpace project artifacts, but not that exact file. :contentReference[oaicite:0]{index=0}
+
+If `sanespace.md` is sitting in your **local `Axikeen-Labs-main` repo**, the cleanest move is to give Copilot the updated content/instructions and have it update that local file.
 ---
 
 ## 21. Success Metrics

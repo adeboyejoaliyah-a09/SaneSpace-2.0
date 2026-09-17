@@ -9,6 +9,7 @@ import { extractEmotionalMemory } from '@/lib/memoryExtraction'
 import { generateSaneSpaceResponse } from '@/lib/ai/responseEngine'
 import { AUTH_COOKIE_NAME, getSessionUserFromToken } from '@/lib/auth'
 import { isMemoryEnabled, retrieveRelevantMemories, upsertUserMemories } from '@/lib/memoryStore'
+import { latestMoodEntry } from '@/lib/moodStore'
 import { normalizeLanguageId } from '@/lib/languages'
 
 const VALID_MODES = new Set(['listening', 'coach', 'explorer', 'companion', 'care'])
@@ -196,6 +197,7 @@ export async function POST(req: NextRequest) {
       languageProfile,
       userName,
       userMemories: relevantMemories,
+      recentMood: latestMoodEntry(sessionUser.id),
     })
 
     const reasoning = buildReasoningSummary(messages, detectedMode, specialisation, riskResult, crisisAssessment)

@@ -11,6 +11,7 @@ export interface GenerateResponseInput {
   languageProfile?: string
   userName?: string
   userMemories?: StoredUserMemory[]
+  recentMood?: { mood: string; triggerTag: string | null; date: string } | null
 }
 
 export function buildSaneSpaceSystemPrompt(input: GenerateResponseInput) {

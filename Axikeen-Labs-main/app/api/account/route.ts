@@ -9,7 +9,7 @@ export async function DELETE() {
   if (!user || !token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    deleteAccount(user.id, token)
+    await deleteAccount(user.id, token)
     const response = NextResponse.json({ success: true })
     response.cookies.set(AUTH_COOKIE_NAME, '', {
       httpOnly: true,

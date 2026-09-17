@@ -13,7 +13,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const reminders = listReminders(user.id)
+  const reminders = await listReminders(user.id)
   return NextResponse.json({ reminders })
 }
 
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid dueAt value' }, { status: 400 })
   }
 
-  const reminder = createReminder({
+  const reminder = await createReminder({
     userId: user.id,
     title,
     description,

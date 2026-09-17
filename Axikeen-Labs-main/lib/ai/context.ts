@@ -110,6 +110,7 @@ export function buildContextBundle(input: {
   languageProfile?: string
   userName?: string
   userMemories?: StoredUserMemory[]
+  recentMood?: { mood: string; triggerTag: string | null; date: string } | null
 }): ContextBundle {
   const lastUserMessage = [...input.messages].reverse().find((message) => message.sender === 'user')?.content ?? ''
   const riskResult = classifyRisk(lastUserMessage, input.messages)
@@ -132,7 +133,10 @@ export function buildContextBundle(input: {
   const retrievedMemory = input.userMemories ?? []
   const personalMemory = `Relevant memory summary: ${getMemorySummary(input.messages)}. Retrieved user memories: ${retrievedMemory.map((item) => `${item.category}:${item.content}`).join('; ') || 'No relevant stored memory.'}. New structured insights: ${memoryExtraction.memoriesExtracted.slice(0, 2).map((item) => `${item.category}:${item.content}`).join('; ') || 'None.'}`
   const culturalContext = buildCulturalContext(input.languageProfile ?? languageProfile)
-  const emotionalContext = `Current conversational emotional cues: ${getEmotionalSummary(input.messages)}. Match the tone to the user's actual moment. Be attentive without overperforming empathy. Avoid repetitive “I’m sorry” scripts when the context calls for practical warmth.`
+  const moodContext = input.recentMood
+    ? ` The user most recently checked in feeling "${input.recentMood.mood}"${input.recentMood.triggerTag ? ` (context: ${input.recentMood.triggerTag})` : ''} on ${new Date(input.recentMood.date).toDateString()}. Acknowledge their current state naturally when relevant — do not treat it as a script, and do not bring it up if the conversation has clearly moved on.`
+    : ''
+  const emotionalContext = `Current conversational emotional cues: ${getEmotionalSummary(input.messages)}.${moodContext} Match the tone to the user's actual moment. Be attentive without overperforming empathy. Avoid repetitive “I’m sorry” scripts when the context calls for practical warmth.`
   const domainContext = `Current domain likely in focus: ${domain}. Respond as a companion in that domain while staying aware of the person behind the request.`
   const safetyContext = riskResult.riskLevel === 'low'
     ? 'Safety: routine conversation; continue normal support and keep the conversation calm, useful, and non-judgmental.'

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getLanguageCapabilities, getLanguageDefinition, getLanguageLocale, normalizeLanguageId } from './languages'
+import { getLanguageCapabilities, getLanguageDefinition, getLanguageLocale, normalizeLanguageId, resolveLanguagePreference } from './languages'
 
 describe('global language configuration', () => {
   it.each([
@@ -21,6 +21,16 @@ describe('global language configuration', () => {
     expect(getLanguageDefinition('zh-TW').id).toBe('chinese-traditional')
     expect(getLanguageDefinition('english').culturalContext).toBe('neutral')
     expect(getLanguageDefinition('nigerian-pidgin').culturalContext).toBe('nigerian')
+  })
+
+  it('prefers the saved server profile over local fallback values', () => {
+    expect(resolveLanguagePreference('spanish', 'english')).toBe('spanish')
+    expect(resolveLanguagePreference('nigerian-pidgin', 'yoruba')).toBe('nigerian-pidgin')
+  })
+
+  it('uses localStorage values only as a temporary fallback when the profile is absent', () => {
+    expect(resolveLanguagePreference(null, 'hausa')).toBe('hausa')
+    expect(resolveLanguagePreference(undefined, 'Neutral / International')).toBe('english')
   })
 
   it('separates catalog identity from provider and voice capabilities', () => {

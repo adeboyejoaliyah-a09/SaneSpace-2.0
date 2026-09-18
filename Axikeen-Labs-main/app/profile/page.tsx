@@ -10,7 +10,9 @@ import Button from '@/components/ui/Button'
 import ScrollReveal from '@/components/ui/ScrollReveal'
 import { fadeUp } from '@/lib/animations'
 import type { StoredUserMemory } from '@/lib/memoryExtraction'
-import { LANGUAGE_DEFINITIONS, getLanguageLabel, normalizeLanguageId } from '@/lib/languages'
+import { LANGUAGE_DEFINITIONS, getLanguageLabel, normalizeLanguageId, resolveLanguagePreference } from '@/lib/languages'
+import { DEFAULT_NOTIFICATION_SETTINGS, loadNotificationSettings, saveNotificationSettings, type NotificationPermissionState } from '@/lib/notificationSettings'
+import { requestNotificationPermission, supportsBrowserNotifications } from '@/lib/notificationClient'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -181,6 +183,7 @@ export default function ProfilePage() {
     specialisation: 'talk',
     languageProfile: 'english',
   })
+  const savedLanguagePreference = useRef<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [savedSection, setSavedSection] = useState<string | null>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -196,8 +199,9 @@ export default function ProfilePage() {
   const [wellnessGoal, setWellnessGoal] = useState('')
   const [displayWellnessGoal, setDisplayWellnessGoal] = useState('Not set')
 
-  const [dailyReminder, setDailyReminder] = useState(false)
-  const [reminderTime, setReminderTime] = useState('9:00 AM')
+  const [dailyReminder, setDailyReminder] = useState(DEFAULT_NOTIFICATION_SETTINGS.enabled)
+  const [reminderTime, setReminderTime] = useState(DEFAULT_NOTIFICATION_SETTINGS.time)
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermissionState>('default')
 
   const [stats, setStats] = useState({
     checkIns: 0, streak: 0, conversations: 0, daysSince: 1,
@@ -211,11 +215,18 @@ export default function ProfilePage() {
       ) as Record<string, string>
       const specKey =
         SPEC_LABEL_TO_KEY[saved.specialisation] ?? saved.specialisation ?? 'talk'
-      const langKey = normalizeLanguageId(saved.languageProfile)
+      const localLanguagePreference = typeof saved.languageProfile === 'string' ? saved.languageProfile : null
+      savedLanguagePreference.current = localLanguagePreference
+      const langKey = resolveLanguagePreference(undefined, localLanguagePreference)
       setPreferences({ specialisation: specKey, languageProfile: langKey })
       setWellnessGoal(saved.wellnessGoal ?? '')
       setDisplayWellnessGoal(saved.wellnessGoal || 'Not set')
     } catch {}
+
+    const savedNotifications = loadNotificationSettings()
+    setDailyReminder(savedNotifications.enabled)
+    setReminderTime(savedNotifications.time)
+    setNotificationPermission(savedNotifications.permission)
 
     void fetch('/api/mood', { cache: 'no-store' })
       .then((response) => response.ok ? response.json() as Promise<{ entries: { date: string }[] }> : null)
@@ -247,7 +258,7 @@ export default function ProfilePage() {
         if (!profile) return
         setPreferences({
           specialisation: SPEC_LABEL_TO_KEY[profile.specialisation ?? ''] ?? profile.specialisation ?? 'talk',
-          languageProfile: normalizeLanguageId(profile.languageProfile),
+          languageProfile: resolveLanguagePreference(profile.languageProfile, savedLanguagePreference.current),
         })
         setWellnessGoal(profile.wellnessGoal ?? '')
         setDisplayWellnessGoal(profile.wellnessGoal || 'Not set')
@@ -345,6 +356,10 @@ export default function ProfilePage() {
           languageProfile: getLanguageLabel(preferences.languageProfile),
         }),
       })
+
+      if (response.ok) {
+        savedLanguagePreference.current = getLanguageLabel(preferences.languageProfile)
+      }
       if (!response.ok) throw new Error('Unable to save preferences')
     } catch {}
     setTimeout(() => {
@@ -381,6 +396,24 @@ export default function ProfilePage() {
       body: JSON.stringify({ enabled: next }),
     })
     if (response.ok) setMemoryEnabled(next)
+  }
+
+  const handleReminderToggle = async () => {
+    const nextValue = !dailyReminder
+    setDailyReminder(nextValue)
+    saveNotificationSettings({ enabled: nextValue, time: reminderTime })
+
+    if (nextValue && supportsBrowserNotifications()) {
+      const permission = await requestNotificationPermission().catch(() => 'denied')
+      const normalized = permission === 'granted' || permission === 'denied' ? permission : 'default'
+      setNotificationPermission(normalized)
+      saveNotificationSettings({ enabled: nextValue, time: reminderTime, permission: normalized })
+    }
+  }
+
+  const handleReminderTimeChange = (value: string) => {
+    setReminderTime(value)
+    saveNotificationSettings({ enabled: dailyReminder, time: value, permission: notificationPermission })
   }
 
   const handleSaveMemory = async () => {
@@ -676,7 +709,7 @@ export default function ProfilePage() {
                 </div>
                 <ToggleSwitch
                   checked={dailyReminder}
-                  onChange={() => setDailyReminder((v) => !v)}
+                  onChange={() => { void handleReminderToggle() }}
                 />
               </div>
 
@@ -693,7 +726,7 @@ export default function ProfilePage() {
                       <span className="text-sm text-dark font-medium">Reminder Time</span>
                       <select
                         value={reminderTime}
-                        onChange={(e) => setReminderTime(e.target.value)}
+                        onChange={(e) => handleReminderTimeChange(e.target.value)}
                         className="border border-border rounded-xl px-3 py-1.5 text-sm bg-surface
                           focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                       >

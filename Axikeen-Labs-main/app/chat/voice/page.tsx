@@ -3,15 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { ArrowLeft, Keyboard, Mic, MicOff, Phone, Settings, Volume2, VolumeX, X } from 'lucide-react'
+import { ArrowLeft, Keyboard, Mic, MicOff, Pause, Phone, Play, Settings, Square, Volume2, VolumeX, X } from 'lucide-react'
 import { CompanionAvatar, CompanionState, CompanionStatus } from '@/components/ui/Companion'
 import { useSaneUser } from '@/hooks/useSaneUser'
 import type { Conversation, Message } from '@/lib/types'
 import { getFinalTranscript, getRecognitionLocale } from '@/lib/voiceConversation'
+import { resolveLanguagePreference } from '@/lib/languages'
 import { persistVoiceConversation, requestVoiceChat, requestVoiceTts } from '@/lib/voiceTransport'
 import { playAudioElement, speakWithBrowser } from '@/lib/voiceOutput'
 
-type VoiceStatus = 'idle' | 'listening' | 'thinking' | 'speaking' | 'muted' | 'error'
+type VoiceStatus = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'speaking' | 'muted' | 'no-speech' | 'error'
 type AnySpeechRecognition = {
   continuous: boolean
   interimResults: boolean
@@ -46,6 +47,11 @@ const statusText: Record<VoiceStatus, { title: string; detail: string; companion
     detail: 'Speak naturally. SaneSpace will wait for a finished thought.',
     companionState: 'listening',
   },
+  transcribing: {
+    title: 'I am transcribing your words.',
+    detail: 'SaneSpace is turning your spoken thought into a clear prompt before it responds.',
+    companionState: 'processing',
+  },
   thinking: {
     title: 'Let me think that through.',
     detail: 'SaneSpace is connecting your words with the conversation context.',
@@ -53,13 +59,18 @@ const statusText: Record<VoiceStatus, { title: string; detail: string; companion
   },
   speaking: {
     title: 'SaneSpace is speaking.',
-    detail: 'You can mute or end the session at any time.',
+    detail: 'You can mute, replay, or end the session at any time.',
     companionState: 'speaking',
   },
   muted: {
     title: 'Microphone paused.',
     detail: 'Unmute when you want to continue.',
     companionState: 'muted',
+  },
+  'no-speech': {
+    title: 'No speech detected yet.',
+    detail: 'Try speaking a little more clearly or tap the microphone again to restart.',
+    companionState: 'idle',
   },
   error: {
     title: 'Voice needs attention.',
@@ -101,6 +112,7 @@ export default function VoicePage() {
   const reduceMotion = useReducedMotion()
 
   const [status, setStatus] = useState<VoiceStatus>('idle')
+  const [audioPlaybackState, setAudioPlaybackState] = useState<'stopped' | 'playing' | 'paused'>('stopped')
   const [isMuted, setIsMuted] = useState(false)
   const [isSupported, setIsSupported] = useState(true)
   const [started, setStarted] = useState(false)
@@ -162,6 +174,8 @@ export default function VoicePage() {
       audio.removeAttribute('src')
       audio.onended = null
       audio.onerror = null
+      audio.onpause = null
+      audio.onplay = null
       audio.load()
     }
     if (objectUrlRef.current) {
@@ -169,6 +183,7 @@ export default function VoicePage() {
       objectUrlRef.current = null
     }
     setAiText('')
+    setAudioPlaybackState('stopped')
   }, [])
 
   const stopMicResources = useCallback(() => {
@@ -221,7 +236,7 @@ export default function VoicePage() {
       const prefs = JSON.parse(localStorage.getItem('sane_user_preferences') ?? '{}')
       if (typeof prefs.firstName === 'string' && prefs.firstName.trim()) setFirstName(prefs.firstName.trim())
       if (typeof prefs.specialisation === 'string') setSpecialisation(prefs.specialisation)
-      if (typeof prefs.languageProfile === 'string') setLanguageProfile(prefs.languageProfile)
+      if (typeof prefs.languageProfile === 'string') setLanguageProfile(resolveLanguagePreference(undefined, prefs.languageProfile))
     } catch {}
   }, [user?.firstName])
 
@@ -231,9 +246,18 @@ export default function VoicePage() {
       .then((data) => {
         const profile = data?.profile
         if (!profile) return
+        const localFallback = (() => {
+          try {
+            const raw = localStorage.getItem('sane_user_preferences') ?? '{}'
+            const prefs = JSON.parse(raw) as { languageProfile?: string }
+            return typeof prefs.languageProfile === 'string' ? prefs.languageProfile : null
+          } catch {
+            return null
+          }
+        })()
         if (profile.firstName) setFirstName(profile.firstName)
         if (profile.specialisation) setSpecialisation(profile.specialisation)
-        if (profile.languageProfile) setLanguageProfile(profile.languageProfile)
+        if (profile.languageProfile) setLanguageProfile(resolveLanguagePreference(profile.languageProfile, localFallback))
       })
       .catch(() => {})
   }, [])
@@ -287,10 +311,12 @@ export default function VoicePage() {
     stopAudioPlayback()
     setAiText(text)
     setStatus('speaking')
+    setAudioPlaybackState('playing')
 
     if (voiceIdRef.current === 'browser') {
       const spoken = await speakWithBrowser(text, getRecognitionLocale(languageProfile))
       if (!spoken) setMicError('Audio playback is unavailable in this browser. The response is still available as text.')
+      setAudioPlaybackState('stopped')
       return
     }
 
@@ -299,6 +325,9 @@ export default function VoicePage() {
 
       const audio = audioPlayerRef.current ?? new Audio()
       audioPlayerRef.current = audio
+      audio.onplay = () => setAudioPlaybackState('playing')
+      audio.onpause = () => setAudioPlaybackState('paused')
+      audio.onended = () => setAudioPlaybackState('stopped')
       const url = URL.createObjectURL(blob)
       objectUrlRef.current = url
       const played = await playAudioElement(audio, url)
@@ -308,11 +337,15 @@ export default function VoicePage() {
       if (message.includes('configured')) {
         setMicError('Enhanced audio is not configured. Trying browser audio instead.')
         const spoken = await speakWithBrowser(text, getRecognitionLocale(languageProfile))
-        if (spoken) return
+        if (spoken) {
+          setAudioPlaybackState('stopped')
+          return
+        }
       }
       setMicError(message.includes('configured')
         ? 'Enhanced audio is not configured. The response is still available as text.'
         : 'Audio playback failed. The response is still available as text.')
+      setAudioPlaybackState('stopped')
     }
   }, [languageProfile, stopAudioPlayback, volumeEnabled])
 
@@ -330,7 +363,8 @@ export default function VoicePage() {
     isProcessingRef.current = true
     setTranscript(text)
     setMicError('')
-    setStatus('thinking')
+    setStatus('transcribing')
+    setAudioPlaybackState('stopped')
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -348,6 +382,7 @@ export default function VoicePage() {
       const data = await requestVoiceChat({ messages: nextMessages, specialisation, languageProfile, userName: firstName })
       const assistantText = data.message
       if (!assistantText) throw new Error('SaneSpace could not respond right now.')
+      setStatus('thinking')
 
       const aiMessage: Message = {
         id: crypto.randomUUID(),
@@ -375,7 +410,8 @@ export default function VoicePage() {
     } finally {
       isProcessingRef.current = false
       if (isMountedRef.current && !isMutedRef.current && started) {
-        setStatus('listening')
+        if (transcript.trim().length === 0) setStatus('no-speech')
+        else setStatus('listening')
         restartRecognitionRef.current?.()
       }
     }
@@ -415,11 +451,17 @@ export default function VoicePage() {
           : 'Speech recognition is unavailable right now.'
 
       setMicError(message)
+      if (event?.error === 'no-speech') {
+        setStatus('no-speech')
+        return
+      }
       setStatus('error')
     }
 
     recognition.onend = () => {
       if (!isMutedRef.current && isMountedRef.current && !isProcessingRef.current) {
+        if (transcript.trim().length === 0) setStatus('no-speech')
+        else setStatus('listening')
         startRecognition()
       }
     }
@@ -431,7 +473,7 @@ export default function VoicePage() {
       setMicError('The microphone is already in use. Please try again.')
       setStatus('error')
     }
-  }, [languageProfile, processTranscript])
+  }, [languageProfile, processTranscript, transcript])
 
   useEffect(() => {
     restartRecognitionRef.current = startRecognition
@@ -474,6 +516,35 @@ export default function VoicePage() {
     }
   }
 
+  const pausePlayback = () => {
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause()
+      setAudioPlaybackState('paused')
+      return
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis?.pause()
+      setAudioPlaybackState('paused')
+    }
+  }
+
+  const resumePlayback = () => {
+    if (audioPlayerRef.current) {
+      void audioPlayerRef.current.play().catch(() => undefined)
+      setAudioPlaybackState('playing')
+      return
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis?.resume()
+      setAudioPlaybackState('playing')
+    }
+  }
+
+  const stopPlayback = () => {
+    stopAudioPlayback()
+    setStatus('idle')
+  }
+
   const toggleMute = () => {
     const nextMuted = !isMuted
     setIsMuted(nextMuted)
@@ -485,7 +556,7 @@ export default function VoicePage() {
       setStatus('muted')
     } else {
       setMicError('')
-      setStatus('listening')
+      setStatus(transcript.trim() ? 'listening' : 'no-speech')
       startRecognition()
     }
   }
@@ -642,6 +713,32 @@ export default function VoicePage() {
           )}
         </div>
 
+        {started && (
+          <div className="mt-5 w-full max-w-xl rounded-2xl border border-border bg-[#111118] p-3 text-left shadow-[0_10px_30px_rgba(124,58,237,0.06)]">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#A7A7B3]">Voice transcript</p>
+              <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-300">
+                {status}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {conversationMessages.length === 0 ? (
+                <p className="text-sm text-[#A7A7B3]">Your words will appear here as they are understood.</p>
+              ) : (
+                conversationMessages.slice(-4).map((message) => (
+                  <div key={message.id} className={`rounded-xl border px-3 py-2 text-sm leading-relaxed ${message.sender === 'user' ? 'border-lime-500/30 bg-lime-500/10 text-lime-100' : 'border-violet-500/30 bg-violet-500/10 text-white'}`}>
+                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.14em] text-[#A7A7B3]">
+                      {message.sender === 'user' ? 'You' : 'SaneSpace'}
+                    </span>
+                    {message.content}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
         {!started ? (
           <button
             type="button"
@@ -653,7 +750,7 @@ export default function VoicePage() {
             {starting ? 'Requesting microphone' : 'Start voice session'}
           </button>
         ) : (
-          <div className="mt-6 flex w-full max-w-sm items-center justify-center gap-3">
+          <div className="mt-6 flex w-full max-w-sm flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={toggleMute}
@@ -672,6 +769,37 @@ export default function VoicePage() {
             >
               {volumeEnabled ? <Volume2 size={22} /> : <VolumeX size={22} />}
             </button>
+            {aiText && (
+              <>
+                {audioPlaybackState === 'playing' ? (
+                  <button
+                    type="button"
+                    onClick={pausePlayback}
+                    className="flex h-14 w-14 items-center justify-center rounded-xl border border-border bg-surface text-gray-text transition hover:bg-primary-light hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                    aria-label="Pause response"
+                  >
+                    <Pause size={22} />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={resumePlayback}
+                    className="flex h-14 w-14 items-center justify-center rounded-xl border border-border bg-surface text-gray-text transition hover:bg-primary-light hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                    aria-label="Resume response"
+                  >
+                    <Play size={22} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={stopPlayback}
+                  className="flex h-14 w-14 items-center justify-center rounded-xl border border-border bg-surface text-gray-text transition hover:bg-red-500/10 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  aria-label="Stop response"
+                >
+                  <Square size={22} />
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={handleExit}

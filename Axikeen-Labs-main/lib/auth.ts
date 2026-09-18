@@ -13,7 +13,7 @@ export const AUTH_COOKIE_NAME = 'sanespace_session'
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 7
 
 function getAuthSecret(): string {
-  const secret = process.env.AUTH_SECRET
+  const secret = process.env.AUTH_SECRET ?? (process.env.NODE_ENV === 'production' ? '' : 'development-sanespace-auth-secret')
   if (!secret) {
     throw new Error('AUTH_SECRET is not configured')
   }

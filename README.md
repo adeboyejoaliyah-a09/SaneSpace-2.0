@@ -6,6 +6,15 @@ SaneSpace is a culturally intelligent, personalized AI companion designed to hel
 
 From school and career decisions to relationships, finances, emotional wellbeing, planning, and everyday challenges, SaneSpace aims to provide one continuous companion that understands the broader context of the user rather than treating every interaction as isolated.
 
+## Current implementation status
+
+- Reminder scheduling is operational. The app includes a working server-side reminder processor triggered by Vercel cron, with recurrence and state handling in place.
+- Browser notification and PWA foundation are implemented, including permission handling, service-worker registration, and manifest support.
+- Real scheduled browser push delivery remains a future enhancement requiring Web Push infrastructure. This is intentionally deferred and is not part of the current reminder scheduler or production behavior.
+- `mood_entries` remains the authoritative source for ongoing mood and check-in data.
+- `user_profiles.current_mood` is legacy onboarding data and is not being redesigned as part of the current scope.
+- The existing reminder scheduler must remain untouched while Web Push is deferred.
+
 ---
 
 ##  Vision

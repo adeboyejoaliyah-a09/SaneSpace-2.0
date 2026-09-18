@@ -78,6 +78,16 @@ export function normalizeLanguageId(value: unknown): LanguageId {
   return byAlias.get(value.trim().toLowerCase()) ?? 'english'
 }
 
+export function resolveLanguagePreference(serverValue?: string | null, localFallback?: string | null): LanguageId {
+  if (typeof serverValue === 'string' && serverValue.trim() !== '') {
+    return normalizeLanguageId(serverValue)
+  }
+  if (typeof localFallback === 'string' && localFallback.trim() !== '') {
+    return normalizeLanguageId(localFallback)
+  }
+  return 'english'
+}
+
 export function isSupportedLanguage(value: unknown) {
   return typeof value === 'string' && byAlias.has(value.trim().toLowerCase())
 }

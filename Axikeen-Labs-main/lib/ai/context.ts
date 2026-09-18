@@ -30,6 +30,14 @@ export interface ContextBundle {
   specialisation: string
   domain: SaneDomain
   userName: string
+  preferredName?: string
+  country?: string
+  cityOrRegion?: string
+  communicationPreferences?: string[]
+  useCases?: string[]
+  interests?: string[]
+  goals?: string[]
+  personalContext?: string
 }
 
 const DOMAIN_KEYWORDS: Record<SaneDomain, RegExp[]> = {
@@ -109,6 +117,14 @@ export function buildContextBundle(input: {
   specialisation?: string
   languageProfile?: string
   userName?: string
+  preferredName?: string
+  country?: string
+  cityOrRegion?: string
+  communicationPreferences?: string[]
+  useCases?: string[]
+  interests?: string[]
+  goals?: string[]
+  personalContext?: string
   userMemories?: StoredUserMemory[]
   recentMood?: { mood: string; triggerTag: string | null; date: string } | null
 }): ContextBundle {
@@ -119,6 +135,11 @@ export function buildContextBundle(input: {
   const domain = inferDomain(lastUserMessage)
   const specialisation = input.specialisation ?? 'General support'
   const userName = input.userName?.trim() || 'friend'
+  const userLocation = [input.country, input.cityOrRegion].filter(Boolean).join(', ') || 'Unknown location'
+  const communicationPreferences = (input.communicationPreferences ?? []).slice(0, 12)
+  const useCases = (input.useCases ?? []).slice(0, 15)
+  const interests = (input.interests ?? []).slice(0, 20)
+  const goals = (input.goals ?? []).slice(0, 15)
 
   const memoryExtraction = extractEmotionalMemory({
     userId: 'local',
@@ -129,7 +150,16 @@ export function buildContextBundle(input: {
   })
 
   const identity = `SaneSpace is a personal AI companion that prioritizes the person before the task. It is warm, attentive, practical, culturally aware, non-judgmental, and useful across school, work, relationships, decision-making, creativity, personal planning, and everyday life.`
-  const userContext = `Personality/specialisation: ${specialisation}. Language/register preference: ${languageProfile}. User name: ${userName}. Adapt naturally without forcing a rigid script.`
+  const personalizationSummary = [
+    input.preferredName ? `Preferred name: ${input.preferredName}.` : '',
+    input.country ? `Country/home location: ${userLocation}.` : '',
+    communicationPreferences.length ? `Communication style preferences: ${communicationPreferences.join(', ')}.` : '',
+    useCases.length ? `Use cases: ${useCases.join(', ')}.` : '',
+    interests.length ? `Interests: ${interests.join(', ')}.` : '',
+    goals.length ? `Goals: ${goals.join(', ')}.` : '',
+    input.personalContext ? `Personal context: ${input.personalContext}.` : '',
+  ].filter(Boolean).join(' ')
+  const userContext = `Personality/specialisation: ${specialisation}. Language/register preference: ${languageProfile}. User name: ${userName}. ${personalizationSummary || 'No additional personal context provided yet.'} Adapt naturally without forcing a rigid script.`
   const retrievedMemory = input.userMemories ?? []
   const personalMemory = `Relevant memory summary: ${getMemorySummary(input.messages)}. Retrieved user memories: ${retrievedMemory.map((item) => `${item.category}:${item.content}`).join('; ') || 'No relevant stored memory.'}. New structured insights: ${memoryExtraction.memoriesExtracted.slice(0, 2).map((item) => `${item.category}:${item.content}`).join('; ') || 'None.'}`
   const culturalContext = buildCulturalContext(input.languageProfile ?? languageProfile)
@@ -160,5 +190,13 @@ export function buildContextBundle(input: {
     specialisation,
     domain,
     userName,
+    preferredName: input.preferredName,
+    country: input.country,
+    cityOrRegion: input.cityOrRegion,
+    communicationPreferences,
+    useCases,
+    interests,
+    goals,
+    personalContext: input.personalContext,
   }
 }

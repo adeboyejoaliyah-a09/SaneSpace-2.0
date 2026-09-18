@@ -1,0 +1,17 @@
+{
+  "name": "SaneSpace",
+  "short_name": "SaneSpace",
+  "description": "A supportive AI companion for everyday life.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f6ff",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

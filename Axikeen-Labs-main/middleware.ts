@@ -5,8 +5,17 @@ const PUBLIC_PATHS = [
   '/',
   '/sign-in',
   '/sign-up',
+  '/verify-email',
+  '/forgot-password',
+  '/reset-password',
   '/api/auth/google',
   '/api/auth/google/callback',
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/verify-email',
+  '/api/auth/otp/resend',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
 ]
 
 export async function middleware(request: NextRequest) {
@@ -43,6 +52,18 @@ export async function middleware(request: NextRequest) {
 
   if (user && isAuthPage) {
     return NextResponse.redirect(new URL('/chat', request.url))
+  }
+
+  if (user && !pathname.startsWith('/api/auth/') && !pathname.startsWith('/onboarding') && !pathname.startsWith('/chat')) {
+    const onboardingResponse = await fetch(new URL('/api/auth/onboarding-status', request.url), {
+      headers: { cookie: request.headers.get('cookie') ?? '' },
+    }).catch(() => null)
+    const onboardingData = onboardingResponse && onboardingResponse.ok
+      ? ((await onboardingResponse.json().catch(() => null)) as { profile?: { onboardingComplete?: boolean } | null })
+      : null
+    if (onboardingData?.profile && onboardingData.profile.onboardingComplete === false) {
+      return NextResponse.redirect(new URL('/onboarding', request.url))
+    }
   }
 
   return NextResponse.next()

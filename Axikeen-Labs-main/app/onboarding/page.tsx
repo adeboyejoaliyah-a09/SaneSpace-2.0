@@ -11,91 +11,91 @@ import Button from '@/components/ui/Button'
 import TypingIndicator from '@/components/ui/TypingIndicator'
 import { LANGUAGE_DEFINITIONS, normalizeLanguageId } from '@/lib/languages'
 
-// ─── Data ────────────────────────────────────────────────────────────────────
-
-const MOODS = [
-  { emoji: '😀', label: 'Great' },
-  { emoji: '🙂', label: 'Good' },
-  { emoji: '😐', label: 'Neutral' },
-  { emoji: '😔', label: 'Low' },
-  { emoji: '😣', label: 'Stressed' },
-  { emoji: '😟', label: 'Anxious' },
+const COMMUNICATION_STYLES = [
+  'Casual',
+  'Straight to the point',
+  'Detailed',
+  'Gentle',
+  'Playful',
+  'Thoughtful',
+  'Challenging',
+  'Encouraging',
 ]
 
-const CHALLENGES = [
-  'Academic stress',
-  'Work burnout',
-  'Anxiety',
+const USE_CASES = [
+  'School',
+  'Work',
+  'Brainstorming',
   'Relationships',
-  'Financial pressure',
-  'Family pressure',
+  'Decisions',
+  'Planning',
+  'Journaling',
+  'Learning',
+  'Creative projects',
+  'Someone to talk to',
+  'Everyday life',
   'Just exploring',
-  'Something else',
 ]
 
-const MODES = [
-  { emoji: '🛋️', title: 'Therapy Support', desc: 'CBT & DBT techniques, structured reflection' },
-  { emoji: '🎯', title: 'Life Coaching', desc: 'Goals, accountability, action plans' },
-  { emoji: '💬', title: 'Just to Talk', desc: 'No agenda, just a listening ear' },
-  { emoji: '📚', title: 'Student Support', desc: 'CGPA stress, hostel life, deadlines' },
-  { emoji: '🎮', title: 'Chill / Play', desc: 'Low-pressure, fun, mood boosts' },
-  { emoji: '💼', title: 'Work & Career', desc: 'Burnout, ambition, workplace stress' },
+const INTERESTS = [
+  'Technology',
+  'Music',
+  'Movies/series',
+  'Books',
+  'Gaming',
+  'Art/design',
+  'Sports',
+  'Fashion',
+  'Business',
+  'Science',
+  'Writing',
+  'Travel',
+  'Coding',
+  'Anime',
+  'Food',
+  'Other',
 ]
 
-const LANGUAGES = LANGUAGE_DEFINITIONS.map((language) => ({
-  id: language.id,
-  emoji: language.emoji,
-  title: language.label,
-  desc: language.culturalContext === 'nigerian' ? 'Nigerian language and cultural context' : 'Language and cultural context for your world',
-}))
+const GOALS = [
+  'School',
+  'Career',
+  'Projects',
+  'Learning',
+  'Building something',
+  'Relationships',
+  'Personal growth',
+  'Creative goals',
+  'Other',
+]
 
-type ClosingMsg = { line1: string; body: string; disclaimer?: string }
+const YES_NO = ['Skip', 'Continue']
 
-const CLOSING: Record<string, ClosingMsg> = {
-  'Therapy Support': {
-    line1: "You've taken a brave step 🌿",
-    body: "I'll be here with evidence-based support — CBT, reflection techniques, and a steady space to work through what's on your mind.",
-    disclaimer:
-      "SaneSpace is not a replacement for professional therapy, but it is here whenever you need a thoughtful place to think.",
-  },
-  'Life Coaching': {
-    line1: "Let's build something 🎯",
-    body: "I'll help you set goals, stay accountable, and take real action. Your best self isn't far — let's go find it.",
-  },
-  'Just to Talk': {
-    line1: "I'm here 💬",
-    body: "No agenda, no pressure. Whenever you need to talk, just open SaneSpace. I'll always listen.",
-  },
-  'Student Support': {
-    line1: "You've got this 📚",
-    body: "Carry-over, CGPA stress, hostel wahala — I understand the pressure. Let's figure it out together.",
-  },
-  'Chill / Play': {
-    line1: "Let's vibe ✨",
-    body: "Low pressure, good energy. I'm here whenever you need a light moment or just want to talk.",
-  },
-  'Work & Career': {
-    line1: "Your ambition is valid 💼",
-    body: "Let's work through the burnout and build toward what you actually want. One step at a time.",
-  },
-}
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type Step = 1 | 2 | 3 | 4 | 5
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7
 
 type Selections = {
-  currentMood: string | null
-  challenges: string[]
-  specialisation: string | null
-  languageProfile: string | null
+  preferredName: string
+  country: string
+  cityOrRegion: string
+  communicationPreferences: string[]
+  useCases: string[]
+  interests: string[]
+  interestsText: string
+  goals: string[]
+  goalsText: string
+  personalContext: string
 }
 
 const INITIAL_SELECTIONS: Selections = {
-  currentMood: null,
-  challenges: [],
-  specialisation: null,
-  languageProfile: null,
+  preferredName: '',
+  country: '',
+  cityOrRegion: '',
+  communicationPreferences: [],
+  useCases: [],
+  interests: [],
+  interestsText: '',
+  goals: [],
+  goalsText: '',
+  personalContext: '',
 }
 
 // ─── AIBubble ────────────────────────────────────────────────────────────────
@@ -225,32 +225,15 @@ export default function OnboardingPage() {
     }, 1200)
   }
 
-  // ── Restore progress / redirect if already done (mount only) ───────────
   useEffect(() => {
     try {
-      const prefs = localStorage.getItem('sane_user_preferences')
-      if (prefs) {
-        const parsed = JSON.parse(prefs) as { onboardingComplete?: boolean }
-        if (parsed.onboardingComplete) {
-          router.push('/dashboard')
-          return
-        }
-      }
       const saved = localStorage.getItem('sane_onboarding_progress')
       if (saved) {
-        const { currentStep: s, selections: sel } = JSON.parse(saved) as {
-          currentStep: Step
-          selections: Selections
-        }
-        setCurrentStep(s)
-        setSelections({
-          ...sel,
-          languageProfile: sel.languageProfile ? normalizeLanguageId(sel.languageProfile) : null,
-        })
+        const parsed = JSON.parse(saved) as { currentStep: Step; selections: Partial<Selections> }
+        setCurrentStep(parsed.currentStep || 1)
+        setSelections({ ...INITIAL_SELECTIONS, ...parsed.selections })
       }
-    } catch {
-      // ignore storage errors
-    }
+    } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -263,350 +246,333 @@ export default function OnboardingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep])
 
-  // ── Persist progress on every meaningful state change ───────────────────
-  useEffect(() => {
-    if (currentStep === 1 && selections.currentMood === null) return
-    try {
-      localStorage.setItem(
-        'sane_onboarding_progress',
-        JSON.stringify({ currentStep, selections }),
-      )
-    } catch {}
-  }, [currentStep, selections])
-
-  // ── Navigation helper ───────────────────────────────────────────────────
-  const goToStep = (step: Step, delay = 500) => {
-    if (stepTimerRef.current) clearTimeout(stepTimerRef.current)
-    stepTimerRef.current = setTimeout(() => setCurrentStep(step), delay)
+  const toggleSelection = (list: string[], value: string) => {
+    return list.includes(value) ? list.filter((item) => item !== value) : [...list, value]
   }
 
-  // ── Step handlers ───────────────────────────────────────────────────────
-  const handleMoodSelect = (label: string) => {
-    setSelections((prev) => ({ ...prev, currentMood: label }))
-    goToStep(2, 500)
-  }
+  const parseOptionalTextList = (value: string) =>
+    value
+      .split(/[\n,]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 20)
 
-  const toggleChallenge = (label: string) => {
-    setSelections((prev) => ({
-      ...prev,
-      challenges: prev.challenges.includes(label)
-        ? prev.challenges.filter((c) => c !== label)
-        : [...prev.challenges, label],
-    }))
-  }
-
-  const handleSpecialisationSelect = (title: string) => {
-    setSelections((prev) => ({ ...prev, specialisation: title }))
-    goToStep(4, 500)
-  }
-
-  const handleLanguageSelect = (id: string) => {
-    setSelections((prev) => ({ ...prev, languageProfile: normalizeLanguageId(id) }))
-    goToStep(5, 500)
-  }
-
-  const handleComplete = async () => {
+  const savePreferences = async () => {
     setIsSaving(true)
     setSaveError('')
-    const profile = {
-      specialisation: selections.specialisation,
-      languageProfile: normalizeLanguageId(selections.languageProfile),
-      currentMood: selections.currentMood,
-      challenges: selections.challenges,
-      onboardingComplete: true,
-      ...(user?.firstName ? { firstName: user.firstName } : {}),
-    }
 
     try {
+      const interests = [...new Set([...selections.interests, ...parseOptionalTextList(selections.interestsText)])]
+      const goals = [...new Set([...selections.goals, ...parseOptionalTextList(selections.goalsText)])]
+
       const response = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile),
+        body: JSON.stringify({
+          preferredName: selections.preferredName.trim() || null,
+          country: selections.country.trim() || null,
+          cityOrRegion: selections.cityOrRegion.trim() || null,
+          communicationPreferences: selections.communicationPreferences,
+          useCases: selections.useCases,
+          interests,
+          goals,
+          personalContext: selections.personalContext.trim() || null,
+          onboardingComplete: true,
+          firstName: user?.firstName ?? null,
+        }),
       })
-      if (!response.ok) throw new Error('Unable to save your preferences')
 
-      try {
-        localStorage.setItem('sane_user_preferences', JSON.stringify(profile))
-        localStorage.removeItem('sane_onboarding_progress')
-      } catch {}
-      router.push('/dashboard')
-    } catch {
-      setSaveError('We could not save your space yet. Check your connection and try again.')
+      if (!response.ok) throw new Error('Unable to save your preferences.')
+
+      localStorage.removeItem('sane_onboarding_progress')
+      router.push('/chat')
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Unable to save your preferences.')
     } finally {
       setIsSaving(false)
     }
   }
 
-  // ── Derived values ───────────────────────────────────────────────────────
-  const step2Message = (() => {
-    const m = selections.currentMood
-    if (m === 'Great' || m === 'Good')
-      return "That's good to hear 🙂 What brings you to SaneSpace today? Pick everything that fits."
-    if (m === 'Neutral')
-      return "Got it. What's been on your mind lately? Pick everything that resonates."
-    return "I hear you. You're not alone in this. What's been weighing on you? Pick all that apply."
-  })()
+  const nextStep = (step: Step) => {
+    if (stepTimerRef.current) clearTimeout(stepTimerRef.current)
+    stepTimerRef.current = setTimeout(() => setCurrentStep(step), 300)
+  }
 
-  const closing = selections.specialisation ? CLOSING[selections.specialisation] : null
-  const summaryMood = MOODS.find((m) => m.label === selections.currentMood)
-  const summaryMode = MODES.find((m) => m.title === selections.specialisation)
-  const summaryLang = LANGUAGES.find((l) => l.id === normalizeLanguageId(selections.languageProfile))
+  useEffect(() => {
+    try {
+      localStorage.setItem('sane_onboarding_progress', JSON.stringify({ currentStep, selections }))
+    } catch {}
+  }, [currentStep, selections])
 
-  // ────────────────────────────────────────────────────────────────────────
+  const questionTitle = () => {
+    switch (currentStep) {
+      case 1:
+        return 'What should I call you?'
+      case 2:
+        return 'Where are you based?'
+      case 3:
+        return 'How do you want SaneSpace to talk to you?'
+      case 4:
+        return 'What do you want SaneSpace to help with?'
+      case 5:
+        return 'What are you into?'
+      case 6:
+        return 'What are you working toward right now?'
+      case 7:
+        return 'Anything else you want SaneSpace to know?'
+      default:
+        return 'A little more about you'
+    }
+  }
+
+  const helperText = () => {
+    switch (currentStep) {
+      case 1:
+        return 'Your name, nickname, or whatever feels natural.'
+      case 2:
+        return 'Optional country and city/region help us personalize context without making assumptions.'
+      case 3:
+        return 'These preferences can be changed later.'
+      case 4:
+        return 'Pick the things you want help with most.'
+      case 5:
+        return 'Optional — add a hobby, interest, or anything you enjoy.'
+      case 6:
+        return 'Optional — this helps us understand what matters right now.'
+      case 7:
+        return 'You can share anything that would help SaneSpace understand you better. You can always change or remove this later.'
+      default:
+        return ''
+    }
+  }
+
+  const canProceedFromStepOne = selections.preferredName.trim().length > 0
+
   return (
-    <OnboardingShell currentStep={currentStep} totalSteps={5}>
-      {/* Bottom padding so mobile keyboard doesn't hide content */}
-      <div className="pb-24 md:pb-8">
-        <AnimatePresence
-          mode="wait"
-          onExitComplete={startTyping}
-        >
+    <OnboardingShell currentStep={currentStep} totalSteps={7}>
+      <div className="rounded-[32px] border border-border bg-[#0D0D12]/90 p-5 shadow-[0_30px_80px_rgba(19,15,26,0.75)] md:p-8">
+        <div className="mb-7 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10 text-sm font-semibold text-violet-200">
+            {currentStep}
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-[#A7A7B3]">Personalize your space</p>
+            <h2 className="mt-1 text-2xl font-bold tracking-[-0.06em] text-[#F5F5F7] md:text-3xl">{questionTitle()}</h2>
+            <p className="mt-2 text-sm text-[#A7A7B3]">{helperText()}</p>
+          </div>
+        </div>
+
+        <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.28, ease: 'easeOut' }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="space-y-5"
           >
-
-            {/* ══════════════════════════════════════════
-                STEP 1 — Current Mood
-            ══════════════════════════════════════════ */}
             {currentStep === 1 && (
               <div>
-                <AIBubble isTyping={isTyping}>
-                  <p>Hey, I&apos;m SaneSpace 🌿</p>
-                  <p className="mt-1">Before we begin — this is a judgment-free zone.</p>
-                  <p className="mt-1 font-medium text-dark">How are you feeling right now?</p>
-                </AIBubble>
-
-                <AnimatePresence>
-                  {showContent && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, ease: 'easeOut' }}
-                    >
-                      <div className="grid grid-cols-3 gap-3">
-                        {MOODS.map((mood) => (
-                          <MoodEmoji
-                            key={mood.label}
-                            emoji={mood.emoji}
-                            label={mood.label}
-                            selected={selections.currentMood === mood.label}
-                            onClick={() => handleMoodSelect(mood.label)}
-                          />
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <label htmlFor="preferred-name" className="mb-2 block text-sm font-medium text-[#E6E6EC]">Preferred name / nickname</label>
+                <input
+                  id="preferred-name"
+                  type="text"
+                  value={selections.preferredName}
+                  onChange={(event) => setSelections((prev) => ({ ...prev, preferredName: event.target.value }))}
+                  className="w-full rounded-2xl border border-border bg-[#111118] px-4 py-3 text-base outline-none transition focus:border-violet-400"
+                  placeholder="Ada, Ayo, or whatever you like"
+                  required
+                />
+                {!canProceedFromStepOne && (
+                  <p className="mt-3 text-sm text-red-200">Please tell me what to call you so SaneSpace feels personal.</p>
+                )}
+                <div className="mt-6 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => canProceedFromStepOne && nextStep(2)}
+                    disabled={!canProceedFromStepOne}
+                    className="rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Continue
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* ══════════════════════════════════════════
-                STEP 2 — Challenges
-            ══════════════════════════════════════════ */}
             {currentStep === 2 && (
-              <div>
-                <AIBubble isTyping={isTyping}>
-                  <p>{step2Message}</p>
-                </AIBubble>
-
-                <AnimatePresence>
-                  {showContent && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, ease: 'easeOut' }}
-                    >
-                      <div className="flex flex-wrap gap-2 mb-6">
-                        {CHALLENGES.map((c) => (
-                          <PillChip
-                            key={c}
-                            label={c}
-                            selected={selections.challenges.includes(c)}
-                            onClick={() => toggleChallenge(c)}
-                          />
-                        ))}
-                      </div>
-
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3, duration: 0.3, ease: 'easeOut' }}
-                      >
-                        <Button
-                          variant="primary"
-                          size="md"
-                          disabled={selections.challenges.length === 0}
-                          onClick={() => goToStep(3, 0)}
-                        >
-                          Continue →
-                        </Button>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="country" className="mb-2 block text-sm font-medium text-[#E6E6EC]">Country</label>
+                  <input
+                    id="country"
+                    type="text"
+                    value={selections.country}
+                    onChange={(event) => setSelections((prev) => ({ ...prev, country: event.target.value }))}
+                    className="w-full rounded-2xl border border-border bg-[#111118] px-4 py-3 text-base outline-none transition focus:border-violet-400"
+                    placeholder="Nigeria, Ghana, UK, etc."
+                  />
+                </div>
+                <div>
+                  <label htmlFor="city-region" className="mb-2 block text-sm font-medium text-[#E6E6EC]">City / region (optional)</label>
+                  <input
+                    id="city-region"
+                    type="text"
+                    value={selections.cityOrRegion}
+                    onChange={(event) => setSelections((prev) => ({ ...prev, cityOrRegion: event.target.value }))}
+                    className="w-full rounded-2xl border border-border bg-[#111118] px-4 py-3 text-base outline-none transition focus:border-violet-400"
+                    placeholder="Lagos, Accra, Toronto..."
+                  />
+                </div>
+                <div className="flex justify-between gap-3 pt-2">
+                  <button type="button" onClick={() => nextStep(1)} className="rounded-2xl border border-border bg-[#111118] px-4 py-2.5 text-sm font-medium text-[#F5F5F7]">Back</button>
+                  <button type="button" onClick={() => nextStep(3)} className="rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white">Continue</button>
+                </div>
               </div>
             )}
 
-            {/* ══════════════════════════════════════════
-                STEP 3 — Specialisation Mode
-            ══════════════════════════════════════════ */}
             {currentStep === 3 && (
               <div>
-                <AIBubble isTyping={isTyping}>
-                  <p>How do you want SaneSpace to show up for you?</p>
-                  <p className="mt-1 text-gray-text">
-                    Pick the one that feels right — you can always change this later.
-                  </p>
-                </AIBubble>
-
-                <AnimatePresence>
-                  {showContent && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, ease: 'easeOut' }}
-                      className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                <div className="flex flex-wrap gap-2">
+                  {COMMUNICATION_STYLES.map((style) => (
+                    <button
+                      key={style}
+                      type="button"
+                      onClick={() => setSelections((prev) => ({ ...prev, communicationPreferences: toggleSelection(prev.communicationPreferences, style) }))}
+                      className={`rounded-full border px-3 py-2 text-sm transition ${
+                        selections.communicationPreferences.includes(style)
+                          ? 'border-violet-500 bg-violet-500/10 text-violet-100'
+                          : 'border-border bg-[#111118] text-[#A7A7B3]'
+                      }`}
                     >
-                      {MODES.map((mode) => (
-                        <ModeCard
-                          key={mode.title}
-                          emoji={mode.emoji}
-                          title={mode.title}
-                          desc={mode.desc}
-                          selected={selections.specialisation === mode.title}
-                          onClick={() => handleSpecialisationSelect(mode.title)}
-                        />
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      {style}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-[#A7A7B3]">These preferences can be changed later from your profile.</p>
+                <div className="mt-6 flex justify-between gap-3">
+                  <button type="button" onClick={() => nextStep(2)} className="rounded-2xl border border-border bg-[#111118] px-4 py-2.5 text-sm font-medium text-[#F5F5F7]">Back</button>
+                  <button type="button" onClick={() => nextStep(4)} className="rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white">Continue</button>
+                </div>
               </div>
             )}
 
-            {/* ══════════════════════════════════════════
-                STEP 4 — Language Profile
-            ══════════════════════════════════════════ */}
             {currentStep === 4 && (
               <div>
-                <AIBubble isTyping={isTyping}>
-                  <p>Last thing — how do you naturally talk?</p>
-                  <p className="mt-1 text-gray-text">SaneSpace will match your style.</p>
-                </AIBubble>
-
-                <AnimatePresence>
-                  {showContent && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, ease: 'easeOut' }}
-                      className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                <div className="flex flex-wrap gap-2">
+                  {USE_CASES.map((useCase) => (
+                    <button
+                      key={useCase}
+                      type="button"
+                      onClick={() => setSelections((prev) => ({ ...prev, useCases: toggleSelection(prev.useCases, useCase) }))}
+                      className={`rounded-full border px-3 py-2 text-sm transition ${
+                        selections.useCases.includes(useCase)
+                          ? 'border-violet-500 bg-violet-500/10 text-violet-100'
+                          : 'border-border bg-[#111118] text-[#A7A7B3]'
+                      }`}
                     >
-                      {LANGUAGES.map((lang) => (
-                        <ModeCard
-                          key={lang.title}
-                          emoji={lang.emoji}
-                          title={lang.title}
-                          desc={lang.desc}
-                          selected={selections.languageProfile === lang.id}
-                          onClick={() => handleLanguageSelect(lang.id)}
-                        />
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      {useCase}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-6 flex justify-between gap-3">
+                  <button type="button" onClick={() => nextStep(3)} className="rounded-2xl border border-border bg-[#111118] px-4 py-2.5 text-sm font-medium text-[#F5F5F7]">Back</button>
+                  <button type="button" onClick={() => nextStep(5)} className="rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white">Continue</button>
+                </div>
               </div>
             )}
 
-            {/* ══════════════════════════════════════════
-                STEP 5 — Closing / Ready
-            ══════════════════════════════════════════ */}
             {currentStep === 5 && (
               <div>
-                <AIBubble isTyping={isTyping}>
-                  {closing ? (
-                    <div>
-                      <p className="font-semibold text-dark">{closing.line1}</p>
-                      <p className="mt-2">{closing.body}</p>
-                      {closing.disclaimer && (
-                        <p className="mt-2 text-xs text-gray-400">{closing.disclaimer}</p>
-                      )}
-                    </div>
-                  ) : (
-                    <p>Welcome to SaneSpace 🌿 You&apos;re all set.</p>
-                  )}
-                </AIBubble>
-
-                <AnimatePresence>
-                  {showContent && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, ease: 'easeOut' }}
+                <div className="flex flex-wrap gap-2">
+                  {INTERESTS.map((interest) => (
+                    <button
+                      key={interest}
+                      type="button"
+                      onClick={() => setSelections((prev) => ({ ...prev, interests: toggleSelection(prev.interests, interest) }))}
+                      className={`rounded-full border px-3 py-2 text-sm transition ${
+                        selections.interests.includes(interest)
+                          ? 'border-violet-500 bg-violet-500/10 text-violet-100'
+                          : 'border-border bg-[#111118] text-[#A7A7B3]'
+                      }`}
                     >
-                      {/* Summary card */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.8, duration: 0.5, ease: 'easeOut' }}
-                        className="glass rounded-2xl border border-border p-5 mb-6"
-                      >
-                        <div className="flex flex-col gap-3">
-                          {summaryMood && (
-                            <div className="flex items-center gap-3">
-                              <span className="text-xl leading-none">{summaryMood.emoji}</span>
-                              <span className="text-sm text-gray-text">
-                                Feeling{' '}
-                                <span className="font-semibold text-dark">{summaryMood.label}</span>
-                              </span>
-                            </div>
-                          )}
-                          {summaryMode && (
-                            <div className="flex items-center gap-3">
-                              <span className="text-xl leading-none">{summaryMode.emoji}</span>
-                              <span className="text-sm text-gray-text">
-                                Mode:{' '}
-                                <span className="font-semibold text-dark">{summaryMode.title}</span>
-                              </span>
-                            </div>
-                          )}
-                          {summaryLang && (
-                            <div className="flex items-center gap-3">
-                              <span className="text-xl leading-none">{summaryLang.emoji}</span>
-                              <span className="text-sm text-gray-text">
-                                Language:{' '}
-                                <span className="font-semibold text-dark">
-                                  {summaryLang.title}
-                                </span>
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-text mt-4 pt-3 border-t border-border">
-                          These are your starting settings. Change them anytime in Profile.
-                        </p>
-                      </motion.div>
-
-                      {/* Enter button */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 1.2, duration: 0.4, ease: 'easeOut' }}
-                      >
-                        <Button variant="primary" size="lg" onClick={handleComplete} disabled={isSaving}>
-                          {isSaving ? 'Saving...' : 'Enter SaneSpace →'}
-                        </Button>
-                        {saveError && <p className="mt-3 text-sm text-red-600" role="alert">{saveError}</p>}
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      {interest}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-4">
+                  <label htmlFor="interests-text" className="mb-2 block text-sm font-medium text-[#E6E6EC]">Anything else?</label>
+                  <textarea
+                    id="interests-text"
+                    value={selections.interestsText}
+                    onChange={(event) => setSelections((prev) => ({ ...prev, interestsText: event.target.value }))}
+                    className="min-h-[90px] w-full rounded-2xl border border-border bg-[#111118] px-4 py-3 text-base outline-none transition focus:border-violet-400"
+                    placeholder="Books, photography, travel, gaming, etc."
+                  />
+                </div>
+                <div className="mt-6 flex justify-between gap-3">
+                  <button type="button" onClick={() => nextStep(4)} className="rounded-2xl border border-border bg-[#111118] px-4 py-2.5 text-sm font-medium text-[#F5F5F7]">Back</button>
+                  <button type="button" onClick={() => nextStep(6)} className="rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white">Continue</button>
+                </div>
               </div>
             )}
 
+            {currentStep === 6 && (
+              <div>
+                <div className="flex flex-wrap gap-2">
+                  {GOALS.map((goal) => (
+                    <button
+                      key={goal}
+                      type="button"
+                      onClick={() => setSelections((prev) => ({ ...prev, goals: toggleSelection(prev.goals, goal) }))}
+                      className={`rounded-full border px-3 py-2 text-sm transition ${
+                        selections.goals.includes(goal)
+                          ? 'border-violet-500 bg-violet-500/10 text-violet-100'
+                          : 'border-border bg-[#111118] text-[#A7A7B3]'
+                      }`}
+                    >
+                      {goal}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-4">
+                  <label htmlFor="goals-text" className="mb-2 block text-sm font-medium text-[#E6E6EC]">Anything else you're working toward?</label>
+                  <textarea
+                    id="goals-text"
+                    value={selections.goalsText}
+                    onChange={(event) => setSelections((prev) => ({ ...prev, goalsText: event.target.value }))}
+                    className="min-h-[90px] w-full rounded-2xl border border-border bg-[#111118] px-4 py-3 text-base outline-none transition focus:border-violet-400"
+                    placeholder="Learning something new, better routines, creative projects..."
+                  />
+                </div>
+                <div className="mt-6 flex justify-between gap-3">
+                  <button type="button" onClick={() => nextStep(5)} className="rounded-2xl border border-border bg-[#111118] px-4 py-2.5 text-sm font-medium text-[#F5F5F7]">Back</button>
+                  <button type="button" onClick={() => nextStep(7)} className="rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white">Continue</button>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 7 && (
+              <div>
+                <label htmlFor="personal-context" className="mb-2 block text-sm font-medium text-[#E6E6EC]">Anything else you want SaneSpace to know?</label>
+                <textarea
+                  id="personal-context"
+                  value={selections.personalContext}
+                  onChange={(event) => setSelections((prev) => ({ ...prev, personalContext: event.target.value }))}
+                  className="min-h-[120px] w-full rounded-2xl border border-border bg-[#111118] px-4 py-3 text-base outline-none transition focus:border-violet-400"
+                  placeholder="Optional — share anything that would help SaneSpace understand you better."
+                />
+                <div className="mt-3 flex justify-end">
+                  <button type="button" onClick={() => setSelections((prev) => ({ ...prev, personalContext: '' }))} className="text-sm text-[#A7A7B3] hover:text-[#F5F5F7]">Skip</button>
+                </div>
+                <div className="mt-6 flex justify-between gap-3">
+                  <button type="button" onClick={() => nextStep(6)} className="rounded-2xl border border-border bg-[#111118] px-4 py-2.5 text-sm font-medium text-[#F5F5F7]">Back</button>
+                  <button type="button" onClick={() => void savePreferences()} disabled={isSaving} className="rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+                    {isSaving ? 'Saving...' : 'Finish'}
+                  </button>
+                </div>
+                {saveError && <p className="mt-4 text-sm text-red-200">{saveError}</p>}
+              </div>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>

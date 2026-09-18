@@ -11,12 +11,40 @@ const database = new Database(databasePath)
 database.exec(`
   CREATE TABLE IF NOT EXISTS user_profiles (
     user_id TEXT PRIMARY KEY, first_name TEXT, last_name TEXT,
-    specialisation TEXT, language_profile TEXT, current_mood TEXT,
-    challenges_json TEXT NOT NULL DEFAULT '[]', wellness_goal TEXT,
-    onboarding_complete INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL
+    preferred_name TEXT, country TEXT, city_or_region TEXT,
+    communication_preferences_json TEXT NOT NULL DEFAULT '[]',
+    use_cases_json TEXT NOT NULL DEFAULT '[]',
+    interests_json TEXT NOT NULL DEFAULT '[]',
+    goals_json TEXT NOT NULL DEFAULT '[]',
+    personal_context TEXT, specialisation TEXT, language_profile TEXT,
+    current_mood TEXT, challenges_json TEXT NOT NULL DEFAULT '[]',
+    wellness_goal TEXT, onboarding_complete INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS user_memory_settings (
     user_id TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS email_auth_users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    display_name TEXT,
+    email_verified INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    last_login_at TEXT,
+    updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS email_otp_codes (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    purpose TEXT NOT NULL,
+    otp_hash TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    attempts_left INTEGER NOT NULL DEFAULT 5,
+    used INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    cooldown_until TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z',
+    updated_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS user_memories (
     id TEXT PRIMARY KEY, user_id TEXT NOT NULL, memory_type TEXT NOT NULL,

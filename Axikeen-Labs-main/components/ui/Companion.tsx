@@ -99,9 +99,9 @@ export function CompanionStatus({ state = 'idle', compact = false }: { state?: C
   const copy = stateCopy[state]
 
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-gray-text">
-      <span className={`h-2 w-2 rounded-full ${state === 'error' || state === 'offline' ? 'bg-red-500' : state === 'muted' ? 'bg-accent' : 'bg-primary'}`} />
-      <span className="font-semibold text-dark">{copy.label}</span>
+    <div className="inline-flex items-center gap-2 rounded-full border border-border bg-[#111118] px-3 py-1.5 text-xs text-[#A7A7B3]">
+      <span className={`h-2 w-2 rounded-full ${state === 'error' || state === 'offline' ? 'bg-red-500' : state === 'muted' ? 'bg-[#B8FF3D]' : 'bg-violet-500'}`} />
+      <span className="font-semibold text-[#F5F5F7]">{copy.label}</span>
       {!compact && <span>{copy.detail}</span>}
     </div>
   )
@@ -109,7 +109,7 @@ export function CompanionStatus({ state = 'idle', compact = false }: { state?: C
 
 export function CompanionIndicator({ state = 'idle', label }: { state?: CompanionState; label?: string }) {
   return (
-    <div className="inline-flex items-center gap-2 text-xs font-medium text-gray-text">
+    <div className="inline-flex items-center gap-2 text-xs font-medium text-[#A7A7B3]">
       <CompanionAvatar state={state} size="sm" />
       <span>{label ?? stateCopy[state].detail}</span>
     </div>
@@ -120,14 +120,14 @@ export function ThinkingIndicator({ label = 'SaneSpace is thinking' }: { label?:
   const reduceMotion = useReducedMotion()
 
   return (
-    <div className="flex items-center gap-3 rounded-full border border-border bg-surface px-4 py-2 text-sm text-gray-text" role="status" aria-live="polite">
+    <div className="flex items-center gap-3 rounded-full border border-violet-500/30 bg-[#111118] px-4 py-2 text-sm text-[#A7A7B3]" role="status" aria-live="polite">
       <CompanionAvatar state="thinking" size="sm" />
       <span>{label}</span>
       <span className="flex items-center gap-1" aria-hidden="true">
         {[0, 1, 2].map((dot) => (
           <motion.span
             key={dot}
-            className="h-1.5 w-1.5 rounded-full bg-primary"
+            className="h-1.5 w-1.5 rounded-full bg-violet-400"
             animate={!reduceMotion ? { opacity: [0.35, 1, 0.35] } : undefined}
             transition={{ duration: 1.1, repeat: Infinity, delay: dot * 0.18 }}
           />
@@ -149,11 +149,11 @@ export function CompanionGreeting({
   return (
     <section className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center px-4 py-12 text-center">
       <CompanionAvatar state="idle" size="lg" className="mb-5" />
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">SaneSpace companion</p>
-      <h1 className="mt-3 font-heading text-3xl font-bold leading-tight text-dark md:text-5xl">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">SaneSpace companion</p>
+      <h1 className="mt-3 font-heading text-3xl font-bold leading-tight text-[#F5F5F7] md:text-5xl">
         What are you figuring out{name ? `, ${name}` : ''}?
       </h1>
-      <p className="mt-4 max-w-md text-base leading-relaxed text-gray-text">
+      <p className="mt-4 max-w-md text-base leading-relaxed text-[#A7A7B3]">
         Talk to SaneSpace about whatever you&apos;re figuring out.
       </p>
       <div className="mt-8 grid w-full max-w-xl gap-3 sm:grid-cols-3">
@@ -162,7 +162,7 @@ export function CompanionGreeting({
             key={suggestion}
             type="button"
             onClick={() => onSuggestion(suggestion)}
-            className="min-h-20 rounded-lg border border-border bg-surface px-4 py-3 text-left text-sm font-medium text-dark shadow-sm transition hover:border-primary/60 hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-bg-base"
+            className="min-h-20 rounded-2xl border border-border bg-[#111118] px-4 py-3 text-left text-sm font-medium text-[#F5F5F7] shadow-[0_8px_20px_rgba(124,58,237,0.08)] transition hover:border-violet-500/40 hover:bg-[#17171F] focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-[#070708]"
           >
             {suggestion}
           </button>
@@ -201,13 +201,13 @@ export function ChatMessage({ message, isLatest = false }: { message: Message; i
         <div
           className={
             isUser
-              ? 'rounded-lg bg-primary px-4 py-3 text-sm leading-relaxed text-white shadow-sm'
-              : 'px-1 py-2 text-sm leading-7 text-dark'
+              ? 'rounded-2xl bg-violet-600 px-4 py-3 text-sm leading-relaxed text-white shadow-[0_12px_30px_rgba(124,58,237,0.18)]'
+              : 'rounded-2xl border border-border bg-[#111118] px-4 py-3 text-sm leading-7 text-[#F5F5F7]'
           }
         >
           <p className="whitespace-pre-wrap break-words">{message.content}</p>
         </div>
-        <div className={`mt-1 flex items-center gap-2 text-[11px] text-gray-text ${isUser ? 'justify-end' : 'justify-start'}`}>
+        <div className={`mt-1 flex items-center gap-2 text-[11px] text-[#A7A7B3] ${isUser ? 'justify-end' : 'justify-start'}`}>
           {!isUser && <ModeTag mode={message.adaptiveMode} size="small" />}
           <time dateTime={message.timestamp}>{formatTime(message.timestamp)}</time>
         </div>
@@ -267,13 +267,13 @@ export function ChatComposer({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-4xl items-end gap-2 rounded-xl border border-border bg-surface p-2 shadow-[0_12px_40px_rgb(var(--tw-primary)/0.08)]">
+    <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-4xl items-end gap-2 rounded-2xl border border-border bg-[#111118] p-2 shadow-[0_12px_40px_rgba(124,58,237,0.08)]">
       <button
         type="button"
         onClick={onVoice}
         disabled={disabled}
         aria-label="Open voice mode"
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-gray-text transition hover:bg-primary-light hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-[#17171F] text-[#A7A7B3] transition hover:border-violet-500/40 hover:text-[#F5F5F7] focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Mic size={19} />
       </button>
@@ -286,13 +286,13 @@ export function ChatComposer({
         rows={1}
         disabled={disabled}
         aria-label="Message SaneSpace"
-        className="max-h-36 min-h-11 flex-1 resize-none bg-transparent px-2 py-3 text-sm leading-relaxed text-dark placeholder:text-gray-text focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+        className="max-h-36 min-h-11 flex-1 resize-none bg-transparent px-2 py-3 text-sm leading-relaxed text-[#F5F5F7] placeholder:text-[#A7A7B3] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
       />
       <button
         type="submit"
         disabled={!input.trim() || isLoading || disabled}
         aria-label={isLoading ? 'Sending message' : 'Send message'}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-white transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-45"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white transition hover:bg-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-[#111118] disabled:cursor-not-allowed disabled:opacity-45"
       >
         {isLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowUp size={18} />}
       </button>

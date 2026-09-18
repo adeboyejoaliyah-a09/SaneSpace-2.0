@@ -8,7 +8,7 @@ export type SessionUser = {
 export const AUTH_COOKIE_NAME = 'sanespace_session'
 
 function getAuthSecret(): string {
-  const secret = process.env.AUTH_SECRET
+  const secret = process.env.AUTH_SECRET ?? (process.env.NODE_ENV === 'production' ? '' : 'development-sanespace-auth-secret')
   if (!secret) {
     throw new Error('AUTH_SECRET is not configured')
   }

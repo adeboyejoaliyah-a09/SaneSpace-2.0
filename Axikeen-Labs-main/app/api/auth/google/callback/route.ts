@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { AUTH_COOKIE_NAME, createSessionToken } from '@/lib/auth'
+import { getUserProfile } from '@/lib/profileStore'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -67,7 +68,9 @@ export async function GET(request: NextRequest) {
 
     const token = createSessionToken(user)
 
-    const response = NextResponse.redirect(new URL('/chat', request.url))
+    const profile = getUserProfile(user.id)
+    const redirectUrl = profile?.onboardingComplete ? new URL('/chat', request.url) : new URL('/onboarding', request.url)
+    const response = NextResponse.redirect(redirectUrl)
     response.cookies.set(AUTH_COOKIE_NAME, token, {
       httpOnly: true,
       sameSite: 'lax',

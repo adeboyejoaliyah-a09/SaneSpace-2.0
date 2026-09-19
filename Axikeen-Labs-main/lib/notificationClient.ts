@@ -1,5 +1,5 @@
 export function supportsBrowserNotifications(): boolean {
-  return typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator
+  return typeof window !== 'undefined' && typeof Notification !== 'undefined'
 }
 
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
@@ -8,7 +8,7 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 }
 
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
-  if (!supportsBrowserNotifications()) return null
+  if (!supportsBrowserNotifications() || !('serviceWorker' in navigator)) return null
 
   try {
     return await navigator.serviceWorker.register('/sw.js')
@@ -22,14 +22,25 @@ export async function pushReminderNotification(title: string, body: string): Pro
   if (Notification.permission !== 'granted') return false
 
   const registration = await registerServiceWorker()
-  if (!registration) return false
+  if (registration) {
+    registration.showNotification(title, {
+      body,
+      icon: '/icon.svg',
+      badge: '/icon.svg',
+      tag: 'sanespace-reminder',
+    })
+    return true
+  }
 
-  registration.showNotification(title, {
-    body,
-    icon: '/icon.svg',
-    badge: '/icon.svg',
-    tag: 'sanespace-reminder',
-  })
-
-  return true
+  try {
+    new Notification(title, {
+      body,
+      icon: '/icon.svg',
+      badge: '/icon.svg',
+      tag: 'sanespace-reminder',
+    })
+    return true
+  } catch {
+    return false
+  }
 }

@@ -510,7 +510,7 @@ export default function DashboardPage() {
       <Sidebar userName={firstName || user?.fullName || 'User'} />
 
       {/* Main scroll area — offset for desktop sidebar */}
-      <main className="flex-1 md:ml-64 overflow-y-auto min-h-screen pb-24 md:pb-8">
+      <main className="relative z-10 flex-1 md:ml-64 overflow-y-auto min-h-screen pb-24 md:pb-8">
         <div className="px-6 py-8 md:px-10 max-w-5xl mx-auto">
 
           <AnimatePresence mode="wait">
@@ -926,7 +926,9 @@ export default function DashboardPage() {
             )}
           </AnimatePresence>
         </div>
-        <UpcomingReminders />
+        <div className="mx-auto max-w-5xl px-6 md:px-10">
+          <UpcomingReminders />
+        </div>
       </main>
     </div>
   )

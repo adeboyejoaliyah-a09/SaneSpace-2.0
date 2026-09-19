@@ -487,7 +487,7 @@ export default function ChatPage() {
   const messageGroups = groupByDate(messages)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#070708] text-[#F5F5F7]">
+    <div className="relative flex h-screen overflow-hidden bg-[#070708] text-[#F5F5F7]">
       <Sidebar userName={firstName || user?.fullName || 'User'} />
 
       <AnimatePresence>
@@ -525,7 +525,7 @@ export default function ChatPage() {
         )}
       </AnimatePresence>
 
-      <div className="flex h-full min-w-0 flex-1 md:ml-64">
+      <div className="flex h-full min-w-0 flex-1 md:pl-72">
         <aside className="hidden h-full w-72 shrink-0 border-r border-border bg-[#0D0D12] md:flex md:flex-col">
           <ConversationPanel
             conversations={conversations}
@@ -538,7 +538,7 @@ export default function ChatPage() {
           />
         </aside>
 
-        <main className="flex h-full min-w-0 flex-1 flex-col bg-[#070708]">
+        <main className="flex h-full min-w-0 flex-1 flex-col bg-[#070708] pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
           <header className="shrink-0 border-b border-border bg-[#0D0D12]/90 px-4 py-3 backdrop-blur-md">
             <div className="mx-auto flex max-w-5xl items-center gap-3">
               <button
@@ -660,7 +660,7 @@ export default function ChatPage() {
             <div ref={messagesEndRef} />
           </section>
 
-          <footer className="shrink-0 border-t border-border bg-[#070708]/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md md:px-6">
+          <footer className="sticky bottom-0 z-20 shrink-0 border-t border-border bg-[#070708]/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md md:static md:px-6">
             <div className="mx-auto max-w-4xl space-y-3">
               <AnimatePresence>
                 {hardStop && (

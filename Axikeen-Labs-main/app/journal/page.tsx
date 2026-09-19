@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   ArrowLeft,
   BookOpenText,
@@ -18,10 +18,13 @@ import { useEffect, useMemo, useState } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import { useSaneUser } from '@/hooks/useSaneUser'
 
+type JournalMood = 'neutral' | 'calm' | 'happy' | 'sad' | 'anxious' | 'stressed' | 'angry'
+
 type JournalEntry = {
   id: string
   title: string
   content: string
+  mood: JournalMood
   createdAt: string
   updatedAt: string
 }
@@ -31,11 +34,70 @@ type ViewState = 'list' | 'detail' | 'editor'
 type JournalDraft = {
   title: string
   content: string
+  mood: JournalMood
   createdAt: string
   updatedAt: string
 }
 
 const STORAGE_KEY = 'sane_journal_entries'
+const DEFAULT_MOOD: JournalMood = 'neutral'
+
+function isJournalMood(value: unknown): value is JournalMood {
+  return typeof value === 'string' && ['neutral', 'calm', 'happy', 'sad', 'anxious', 'stressed', 'angry'].includes(value)
+}
+
+function makeDefaultDraft(): JournalDraft {
+  const now = new Date().toISOString()
+  return {
+    title: '',
+    content: '',
+    mood: DEFAULT_MOOD,
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
+function readJournalEntries(): JournalEntry[] {
+  if (typeof window === 'undefined' || !('localStorage' in window)) return []
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (!raw) return []
+
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+
+    return parsed
+      .map((entry) => {
+        if (!entry || typeof entry !== 'object') return null
+        const title = typeof entry.title === 'string' ? entry.title.trim() : ''
+        const content = typeof entry.content === 'string' ? entry.content : ''
+        if (!title && !content) return null
+
+        return {
+          id: typeof entry.id === 'string' && entry.id ? entry.id : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          title: title || 'Untitled note',
+          content,
+          mood: isJournalMood(entry.mood) ? entry.mood : DEFAULT_MOOD,
+          createdAt: typeof entry.createdAt === 'string' && entry.createdAt ? entry.createdAt : new Date().toISOString(),
+          updatedAt: typeof entry.updatedAt === 'string' && entry.updatedAt ? entry.updatedAt : new Date().toISOString(),
+        }
+      })
+      .filter((entry): entry is JournalEntry => entry !== null)
+  } catch {
+    return []
+  }
+}
+
+function writeJournalEntries(entries: JournalEntry[]) {
+  if (typeof window === 'undefined' || !('localStorage' in window)) return
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries))
+  } catch {
+    // Preserve the current browser-only behavior. Storage failures are surfaced as a non-blocking error.
+  }
+}
 
 function formatDate(iso: string) {
   const value = new Date(iso)
@@ -68,27 +130,18 @@ export default function JournalPage() {
 
   const [entries, setEntries] = useState<JournalEntry[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [isCreatingNew, setIsCreatingNew] = useState(false)
   const [view, setView] = useState<ViewState>('list')
   const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-  const [draft, setDraft] = useState<JournalDraft>({
-    title: '',
-    content: '',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  })
+  const [draft, setDraft] = useState<JournalDraft>(makeDefaultDraft())
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as JournalEntry[]
-        if (Array.isArray(parsed)) {
-          setEntries(parsed)
-          if (parsed[0]) setSelectedId(parsed[0].id)
-        }
-      }
+      const loaded = readJournalEntries()
+      setEntries(loaded)
+      if (loaded[0]) setSelectedId(loaded[0].id)
     } catch {
       setError('Journal entries are not available in this browser yet.')
     } finally {
@@ -107,14 +160,6 @@ export default function JournalPage() {
     }
   }, [entries, selectedId])
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries))
-    } catch {
-      setError('Your journal is currently running in browser-only mode and cannot be stored on a server yet.')
-    }
-  }, [entries])
-
   const filteredEntries = useMemo(() => {
     if (!search.trim()) return entries
     const q = search.toLowerCase()
@@ -130,12 +175,10 @@ export default function JournalPage() {
   )
 
   const startNewEntry = () => {
-    setDraft({
-      title: '',
-      content: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    })
+    setDraft(makeDefaultDraft())
+    setSelectedId(null)
+    setIsCreatingNew(true)
+    setError('')
     setView('editor')
   }
 
@@ -149,16 +192,20 @@ export default function JournalPage() {
     setDraft({
       title: selectedEntry.title,
       content: selectedEntry.content,
+      mood: isJournalMood(selectedEntry.mood) ? selectedEntry.mood : DEFAULT_MOOD,
       createdAt: selectedEntry.createdAt,
       updatedAt: selectedEntry.updatedAt,
     })
+    setIsCreatingNew(false)
     setView('editor')
   }
 
   const deleteEntry = (id: string) => {
-    setEntries((current) => current.filter((entry) => entry.id !== id))
+    const nextEntries = entries.filter((entry) => entry.id !== id)
+    setEntries(nextEntries)
+    writeJournalEntries(nextEntries)
     setView('list')
-    setSelectedId(null)
+    setSelectedId(nextEntries[0]?.id ?? null)
   }
 
   const saveEntry = () => {
@@ -171,35 +218,54 @@ export default function JournalPage() {
     }
 
     const now = new Date().toISOString()
+    const normalizedDraft = {
+      ...draft,
+      title,
+      content,
+      mood: isJournalMood(draft.mood) ? draft.mood : DEFAULT_MOOD,
+      createdAt: draft.createdAt || now,
+      updatedAt: now,
+    }
 
-    if (selectedEntry && view === 'editor' && selectedEntry.id === selectedId) {
+    const isEditingExistingEntry = Boolean(selectedEntry && !isCreatingNew && view === 'editor' && selectedEntry.id === selectedId)
+
+    if (isEditingExistingEntry) {
       const updated = entries.map((entry) => entry.id === selectedEntry.id
-        ? { ...entry, title, content, updatedAt: now }
+        ? { ...entry, title, content, mood: normalizedDraft.mood, updatedAt: now }
         : entry)
       setEntries(updated)
-      const updatedId = selectedEntry.id
-      setSelectedId(updatedId)
+      writeJournalEntries(updated)
+      setSelectedId(selectedEntry.id)
       setView('detail')
+      setError('')
+      setIsCreatingNew(false)
       return
     }
 
     const nextEntry: JournalEntry = {
-      id: crypto.randomUUID(),
+      id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `journal-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       title,
       content,
-      createdAt: now,
-      updatedAt: now,
+      mood: normalizedDraft.mood,
+      createdAt: normalizedDraft.createdAt,
+      updatedAt: normalizedDraft.updatedAt,
     }
 
-    setEntries((current) => [nextEntry, ...current])
+    const nextEntries = [nextEntry, ...entries.filter((entry) => entry.id !== nextEntry.id)]
+    setEntries(nextEntries)
+    writeJournalEntries(nextEntries)
     setSelectedId(nextEntry.id)
     setView('detail')
     setError('')
+    setIsCreatingNew(false)
   }
 
   const backToJournal = () => {
     setView('list')
     setError('')
+    setIsCreatingNew(false)
   }
 
   const userName = user?.firstName || 'friend'
@@ -332,6 +398,9 @@ export default function JournalPage() {
                         <Clock3 size={14} />
                         {formatDateTime(selectedEntry.updatedAt)}
                       </span>
+                      <span className="inline-flex items-center gap-2 rounded-full border border-border bg-[#111118] px-2.5 py-1.5 capitalize">
+                        {selectedEntry.mood ?? DEFAULT_MOOD}
+                      </span>
                     </div>
 
                     <div className="prose prose-invert max-w-none flex-1 whitespace-pre-wrap rounded-[20px] border border-border bg-[#111118] p-4 text-[15px] leading-7 text-[#F5F5F7]">
@@ -430,6 +499,26 @@ export default function JournalPage() {
                       }}
                       className="w-full rounded-2xl border border-border bg-[#111118] px-4 py-3 text-base text-[#F5F5F7] focus:border-violet-500/40 focus:outline-none"
                     />
+                  </div>
+
+                  <div>
+                    <label htmlFor="journal-mood" className="mb-2 block text-sm font-medium text-[#A7A7B3]">
+                      Mood
+                    </label>
+                    <select
+                      id="journal-mood"
+                      value={draft.mood}
+                      onChange={(e) => setDraft((current) => ({ ...current, mood: e.target.value as JournalMood }))}
+                      className="w-full rounded-2xl border border-border bg-[#111118] px-4 py-3 text-base text-[#F5F5F7] focus:border-violet-500/40 focus:outline-none"
+                    >
+                      <option value="neutral">Neutral</option>
+                      <option value="calm">Calm</option>
+                      <option value="happy">Happy</option>
+                      <option value="sad">Sad</option>
+                      <option value="anxious">Anxious</option>
+                      <option value="stressed">Stressed</option>
+                      <option value="angry">Angry</option>
+                    </select>
                   </div>
                 </div>
 

@@ -8,6 +8,14 @@ export const metadata: Metadata = {
   description:
     'A personal AI companion for school, work, relationships, and everyday life — culturally aware, memory-aware, and built to listen without pressure.',
   manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [
+      { url: '/favicon_io/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon_io/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon_io/favicon.ico', rel: 'shortcut icon' },
+    ],
+    apple: '/favicon_io/apple-touch-icon.png',
+  },
 }
 
 export default function RootLayout({

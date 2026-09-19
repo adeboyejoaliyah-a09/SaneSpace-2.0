@@ -64,14 +64,27 @@ function inferLanguageProfile(input: string, override?: string): LanguageProfile
   return 'english'
 }
 
+function buildLanguageContextProfile(languageProfile: string, communicationPreferences: string[], userContext?: string): string {
+  const language = getLanguageDefinition(languageProfile)
+  const preferences = communicationPreferences.length > 0 ? communicationPreferences.join(', ') : 'not specified'
+  const userProvidedContext = userContext?.trim() ? `User-provided context: ${userContext.trim()}.` : 'No specific cultural or regional context was provided.'
+
+  return `Language profile: ${language.label} (${language.id}).
+Dialect/register handling: treat it as a communication preference or user choice, not a nationality signal.
+Code-switching: allow natural switching between English, Nigerian varieties, and local slang when the user does so, without forcing slang or stereotypes.
+Communication style: ${preferences}.
+Cultural rule: never infer culture, nationality, ethnicity, or background from language, accent, name, or location alone. Use only explicitly stated context or ask when uncertain.
+${userProvidedContext}`
+}
+
 function buildCulturalContext(languageProfile: string): string {
   const language = getLanguageDefinition(languageProfile)
   const regionalNote = language.culturalContext === 'nigerian'
-    ? ' For Nigerian English, Pidgin, and Lagos context, understand code-switching and local social context without forcing slang.'
+    ? 'Respect Nigerian English, Nigerian Pidgin, and related local communication patterns as valid communication styles, not as a stereotype or a proxy for background.'
     : ['yoruba', 'hausa', 'igbo'].includes(language.id)
-      ? ' For a requested Nigerian language, respect the language and cultural context without reducing it to a stereotype.'
-      : ' For global users, use the selected language and context without assuming a country or culture.'
-  return `Cultural context should be interpreted as supportive context, not stereotype. Adapt examples, references, and social assumptions to the user's stated context. Keep language natural, clear, and respectful.${regionalNote}`
+      ? 'Respect the requested Nigerian language as a legitimate language choice and preserve its tone and phrasing without reducing it to caricature.'
+      : 'For global users, keep the response globally inclusive and context-sensitive without assuming culture, origin, or identity from language alone.'
+  return `Cultural context should be interpreted as supportive context, not stereotype. Adapt examples, references, and social assumptions to the user\'s stated context. Keep language natural, clear, and respectful. ${regionalNote}`
 }
 
 function inferDomain(input: string): SaneDomain {
@@ -152,7 +165,7 @@ export function buildContextBundle(input: {
   const identity = `SaneSpace is a personal AI companion that prioritizes the person before the task. It is warm, attentive, practical, culturally aware, non-judgmental, and useful across school, work, relationships, decision-making, creativity, personal planning, and everyday life.`
   const personalizationSummary = [
     input.preferredName ? `Preferred name: ${input.preferredName}.` : '',
-    input.country ? `Country/home location: ${userLocation}.` : '',
+    input.country ? `Known context: user has shared location information: ${userLocation}.` : '',
     communicationPreferences.length ? `Communication style preferences: ${communicationPreferences.join(', ')}.` : '',
     useCases.length ? `Use cases: ${useCases.join(', ')}.` : '',
     interests.length ? `Interests: ${interests.join(', ')}.` : '',
@@ -162,6 +175,7 @@ export function buildContextBundle(input: {
   const userContext = `Personality/specialisation: ${specialisation}. Language/register preference: ${languageProfile}. User name: ${userName}. ${personalizationSummary || 'No additional personal context provided yet.'} Adapt naturally without forcing a rigid script.`
   const retrievedMemory = input.userMemories ?? []
   const personalMemory = `Relevant memory summary: ${getMemorySummary(input.messages)}. Retrieved user memories: ${retrievedMemory.map((item) => `${item.category}:${item.content}`).join('; ') || 'No relevant stored memory.'}. New structured insights: ${memoryExtraction.memoriesExtracted.slice(0, 2).map((item) => `${item.category}:${item.content}`).join('; ') || 'None.'}`
+  const languageContext = buildLanguageContextProfile(languageProfile, communicationPreferences, input.personalContext)
   const culturalContext = buildCulturalContext(input.languageProfile ?? languageProfile)
   const moodContext = input.recentMood
     ? ` The user most recently checked in feeling "${input.recentMood.mood}"${input.recentMood.triggerTag ? ` (context: ${input.recentMood.triggerTag})` : ''} on ${new Date(input.recentMood.date).toDateString()}. Acknowledge their current state naturally when relevant — do not treat it as a script, and do not bring it up if the conversation has clearly moved on.`
@@ -182,7 +196,7 @@ export function buildContextBundle(input: {
     identity,
     userContext,
     personalMemory,
-    culturalContext,
+    culturalContext: `${languageContext}\n\n${culturalContext}`,
     emotionalContext,
     domainContext,
     safetyContext,

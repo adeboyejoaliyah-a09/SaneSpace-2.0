@@ -10,6 +10,8 @@ import PillChip from '@/components/ui/PillChip'
 import Button from '@/components/ui/Button'
 import { staggerContainer, scaleIn, fadeUp } from '@/lib/animations'
 import { extractEmotionalMemory } from '@/lib/memoryExtraction'
+import { loadNotificationSettings } from '@/lib/notificationSettings'
+import { pushReminderNotification } from '@/lib/notificationClient'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -183,19 +185,27 @@ export default function MoodPage() {
 
   const firstName = user?.firstName || 'there'
 
+  const syncMoodStateFromEntry = (entry: LocalEntry | null | undefined) => {
+    if (!entry) return
+    setSelectedMood(entry.mood)
+    setSelectedTrigger(entry.triggerTag ?? null)
+    setJournalNote(entry.note ?? '')
+    setAlreadyCheckedIn(true)
+    setTodayEntry(entry)
+  }
+
   useEffect(() => {
     void fetch('/api/mood', { cache: 'no-store' })
       .then((response) => response.ok ? response.json() as Promise<{ entries: LocalEntry[] }> : null)
       .then((data) => {
         if (!data) return
         const entries = data.entries
-      const todayStr = new Date().toDateString()
-      const found = entries.find((e) => new Date(e.date).toDateString() === todayStr)
-      if (found) {
-        setAlreadyCheckedIn(true)
-        setTodayEntry(found)
-      }
-      setStreak(calcStreak(entries))
+        const todayStr = new Date().toDateString()
+        const found = entries.find((e) => new Date(e.date).toDateString() === todayStr)
+        if (found) {
+          syncMoodStateFromEntry(found)
+        }
+        setStreak(calcStreak(entries))
       })
       .catch(() => {})
   }, [])
@@ -227,9 +237,13 @@ export default function MoodPage() {
       })
       if (!response.ok) throw new Error('Mood could not be saved')
       const data = await response.json() as { entry: LocalEntry; entries: LocalEntry[] }
-      setTodayEntry(data.entry)
-      setAlreadyCheckedIn(true)
+      syncMoodStateFromEntry(data.entry)
       setStreak(calcStreak(data.entries))
+
+      const settings = loadNotificationSettings()
+      if (settings.enabled) {
+        void pushReminderNotification('Check-in saved', `Thanks for checking in — you're doing better than you think.`)
+      }
 
       const extraction = extractEmotionalMemory({
         userId: 'authenticated-user',

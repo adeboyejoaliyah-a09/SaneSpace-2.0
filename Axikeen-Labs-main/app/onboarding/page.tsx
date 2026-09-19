@@ -5,11 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useSaneUser } from '@/hooks/useSaneUser'
 import { motion, AnimatePresence } from 'framer-motion'
 import OnboardingShell from '@/components/layout/OnboardingShell'
-import MoodEmoji from '@/components/ui/MoodEmoji'
-import PillChip from '@/components/ui/PillChip'
-import Button from '@/components/ui/Button'
-import TypingIndicator from '@/components/ui/TypingIndicator'
-import { LANGUAGE_DEFINITIONS, normalizeLanguageId } from '@/lib/languages'
 
 const COMMUNICATION_STYLES = [
   'Casual',
@@ -68,8 +63,6 @@ const GOALS = [
   'Other',
 ]
 
-const YES_NO = ['Skip', 'Continue']
-
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7
 
 type Selections = {
@@ -98,105 +91,6 @@ const INITIAL_SELECTIONS: Selections = {
   personalContext: '',
 }
 
-// ─── AIBubble ────────────────────────────────────────────────────────────────
-
-function AIBubble({
-  isTyping,
-  children,
-}: {
-  isTyping: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <div className="mb-7">
-      <div className="flex items-center gap-2 mb-2">
-        <div className="w-8 h-8 rounded-full bg-primary shrink-0" />
-        <span className="text-xs font-semibold text-primary tracking-wide">SaneSpace</span>
-      </div>
-      <div className="glass rounded-2xl px-5 py-4 text-dark text-sm leading-relaxed min-h-[64px] max-w-[520px]">
-        <AnimatePresence mode="wait">
-          {isTyping ? (
-            <motion.div
-              key="typing"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <TypingIndicator />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="message"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-            >
-              {children}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  )
-}
-
-// ─── ModeCard ────────────────────────────────────────────────────────────────
-
-function ModeCard({
-  emoji,
-  title,
-  desc,
-  selected,
-  onClick,
-}: {
-  emoji: string
-  title: string
-  desc: string
-  selected: boolean
-  onClick: () => void
-}) {
-  return (
-    <motion.button
-      type="button"
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.97 }}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onClick())}
-      className={`relative flex items-center gap-3 p-4 rounded-2xl border cursor-pointer
-        transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary
-        ${
-          selected
-            ? 'border-2 border-primary bg-primary-light'
-            : 'border border-border bg-surface hover:border-primary-mid hover:bg-primary-light/40'
-        }`}
-    >
-      {/* Checkmark */}
-      <AnimatePresence>
-        {selected && (
-          <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ duration: 0.18, type: 'spring', stiffness: 400, damping: 20 }}
-            className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center"
-          >
-            <span className="text-white text-[10px] font-bold leading-none">✓</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <span className="text-3xl shrink-0 leading-none">{emoji}</span>
-      <div className="min-w-0">
-        <p className="font-semibold text-dark text-sm leading-tight">{title}</p>
-        <p className="text-gray-text text-xs mt-0.5 leading-relaxed">{desc}</p>
-      </div>
-    </motion.button>
-  )
-}
-
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
@@ -205,25 +99,11 @@ export default function OnboardingPage() {
 
   const [currentStep, setCurrentStep] = useState<Step>(1)
   const [selections, setSelections] = useState<Selections>(INITIAL_SELECTIONS)
-  const [isTyping, setIsTyping] = useState(true)
-  const [showContent, setShowContent] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
   // refs to manage timers
-  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // ── Start typing → reveal content sequence ──────────────────────────────
-  const startTyping = () => {
-    if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
-    setIsTyping(true)
-    setShowContent(false)
-    typingTimerRef.current = setTimeout(() => {
-      setIsTyping(false)
-      setShowContent(true)
-    }, 1200)
-  }
 
   useEffect(() => {
     try {
@@ -236,15 +116,6 @@ export default function OnboardingPage() {
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // ── Trigger typing animation whenever the step changes ─────────────────
-  useEffect(() => {
-    startTyping()
-    return () => {
-      if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep])
 
   const toggleSelection = (list: string[], value: string) => {
     return list.includes(value) ? list.filter((item) => item !== value) : [...list, value]
@@ -535,7 +406,7 @@ export default function OnboardingPage() {
                   ))}
                 </div>
                 <div className="mt-4">
-                  <label htmlFor="goals-text" className="mb-2 block text-sm font-medium text-[#E6E6EC]">Anything else you're working toward?</label>
+                  <label htmlFor="goals-text" className="mb-2 block text-sm font-medium text-[#E6E6EC]">Anything else you&apos;re working toward?</label>
                   <textarea
                     id="goals-text"
                     value={selections.goalsText}

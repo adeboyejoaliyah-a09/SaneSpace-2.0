@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { motion, useMotionTemplate, useMotionValue, useSpring } from 'framer-motion'
 import {
   ArrowRight,
-  BookOpenText,
   BrainCircuit,
   ChevronRight,
   Globe2,

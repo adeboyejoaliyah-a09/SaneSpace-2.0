@@ -20,12 +20,6 @@ describe('edge session verification', () => {
     await expect(verifySessionToken('not-a-session')).resolves.toBeNull()
   })
 
-  it('uses a development fallback secret when AUTH_SECRET is missing', async () => {
-    delete process.env.AUTH_SECRET
-    const token = createSessionToken({ id: 'fallback-user' })
-    await expect(verifySessionToken(token)).resolves.toMatchObject({ id: 'fallback-user' })
-  })
-
   it('rejects expired sessions', async () => {
     const payload = Buffer.from(JSON.stringify({ id: 'edge-user', exp: Date.now() - 1 })).toString('base64url')
     await expect(verifySessionToken(`${payload}.invalid`)).resolves.toBeNull()

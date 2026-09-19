@@ -39,9 +39,11 @@ async function sendEmailTemplate(templateId: string | undefined, payload: EmailT
       },
     )
     return true
-  } catch {
-    return false
-  }
+ } catch (error) {
+  console.error('[EmailJS] FULL ERROR:', error)
+  console.error('[EmailJS] ERROR JSON:', JSON.stringify(error, null, 2))
+  return false
+}
 }
 
 export async function sendVerificationOtpEmail(email: string, name: string, otp: string): Promise<boolean> {

@@ -50,7 +50,7 @@ export default function Sidebar({ userName = 'User' }: SidebarProps) {
         <div className="flex h-20 items-center justify-between border-b border-border px-5">
           <Link href="/dashboard" className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-violet-400 shadow-[0_8px_20px_rgba(124,58,237,0.25)]">
-              <img src="/icon.svg" alt="SaneSpace logo" className="h-6 w-6" />
+              <img src="/favicon_io/favicon-32x32.png" alt="SaneSpace logo" className="h-6 w-6" />
             </div>
             <div className="leading-none">
               <div className="text-lg font-black tracking-[-0.05em] text-[#F5F5F7]">Sane</div>

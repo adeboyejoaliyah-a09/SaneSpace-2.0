@@ -7,6 +7,70 @@ const databasePath = process.env.SANESPACE_DATABASE_PATH || path.join(process.cw
 fs.mkdirSync(path.dirname(databasePath), { recursive: true })
 const database = new Database(databasePath)
 
+function addMissingColumns(tableName: string, definitions: Array<{ name: string; sql: string }>) {
+  const columns = database.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name: string }>
+  const existing = new Set(columns.map((item) => item.name))
+
+  for (const definition of definitions) {
+    if (!existing.has(definition.name)) {
+      database.exec(`ALTER TABLE ${tableName} ADD COLUMN ${definition.name} ${definition.sql}`)
+    }
+  }
+}
+
+export function ensureEmailAuthSchema() {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS email_auth_users (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      display_name TEXT,
+      email_verified INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      last_login_at TEXT,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS email_otp_codes (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      purpose TEXT NOT NULL,
+      otp_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      attempts_left INTEGER NOT NULL DEFAULT 5,
+      used INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      cooldown_until TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z',
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_email_auth_users_email ON email_auth_users(email);
+    CREATE INDEX IF NOT EXISTS idx_email_otp_codes_user_purpose ON email_otp_codes(user_id, purpose, created_at);
+  `)
+
+  addMissingColumns('email_auth_users', [
+    { name: 'email', sql: 'TEXT NOT NULL DEFAULT ""' },
+    { name: 'password_hash', sql: 'TEXT NOT NULL DEFAULT ""' },
+    { name: 'display_name', sql: 'TEXT' },
+    { name: 'email_verified', sql: 'INTEGER NOT NULL DEFAULT 0' },
+    { name: 'created_at', sql: 'TEXT NOT NULL DEFAULT "1970-01-01T00:00:00.000Z"' },
+    { name: 'last_login_at', sql: 'TEXT' },
+    { name: 'updated_at', sql: 'TEXT NOT NULL DEFAULT "1970-01-01T00:00:00.000Z"' },
+  ])
+
+  addMissingColumns('email_otp_codes', [
+    { name: 'user_id', sql: 'TEXT NOT NULL DEFAULT ""' },
+    { name: 'purpose', sql: 'TEXT NOT NULL DEFAULT "email_verification"' },
+    { name: 'otp_hash', sql: 'TEXT NOT NULL DEFAULT ""' },
+    { name: 'expires_at', sql: 'TEXT NOT NULL DEFAULT "1970-01-01T00:00:00.000Z"' },
+    { name: 'attempts_left', sql: 'INTEGER NOT NULL DEFAULT 5' },
+    { name: 'used', sql: 'INTEGER NOT NULL DEFAULT 0' },
+    { name: 'created_at', sql: 'TEXT NOT NULL DEFAULT "1970-01-01T00:00:00.000Z"' },
+    { name: 'cooldown_until', sql: 'TEXT NOT NULL DEFAULT "1970-01-01T00:00:00.000Z"' },
+    { name: 'updated_at', sql: 'TEXT NOT NULL DEFAULT "1970-01-01T00:00:00.000Z"' },
+  ])
+}
+
+ensureEmailAuthSchema()
+
 export type EmailAuthUser = {
   id: string
   email: string
@@ -42,6 +106,7 @@ export function createPasswordHash(password: string): string {
 }
 
 export function getEmailUserByEmail(email: string): EmailAuthUser | null {
+  ensureEmailAuthSchema()
   const row = database.prepare('SELECT * FROM email_auth_users WHERE email = ?').get(normalizeEmail(email)) as Record<string, unknown> | undefined
   if (!row) return null
 
@@ -58,6 +123,7 @@ export function getEmailUserByEmail(email: string): EmailAuthUser | null {
 }
 
 export function getEmailUserById(userId: string): EmailAuthUser | null {
+  ensureEmailAuthSchema()
   const row = database.prepare('SELECT * FROM email_auth_users WHERE id = ?').get(userId) as Record<string, unknown> | undefined
   if (!row) return null
 
@@ -74,6 +140,7 @@ export function getEmailUserById(userId: string): EmailAuthUser | null {
 }
 
 export function createEmailUser(input: { email: string; password: string; displayName?: string | null }): EmailAuthUser {
+  ensureEmailAuthSchema()
   const email = normalizeEmail(input.email)
   if (!isValidEmail(email)) throw new Error('Invalid email address.')
 
@@ -96,6 +163,7 @@ export function createEmailUser(input: { email: string; password: string; displa
 }
 
 export function verifyPassword(email: string, password: string): EmailAuthUser | null {
+  ensureEmailAuthSchema()
   const user = getEmailUserByEmail(email)
   if (!user) return null
   if (createPasswordHash(password) !== user.passwordHash) return null
@@ -114,6 +182,7 @@ export function generateOtpCode(): string {
 }
 
 export function createOtpCodeForUser(userId: string, purpose: 'email_verification' | 'password_reset' = 'email_verification'): { code: string; hash: string; expiresAt: string; cooldownUntil: string } {
+  ensureEmailAuthSchema()
   const code = generateOtpCode()
   const expiresAt = new Date(Date.now() + 1000 * 60 * 10).toISOString()
   const cooldownUntil = new Date(Date.now() + 1000 * 45).toISOString()
@@ -130,6 +199,7 @@ export function createOtpCodeForUser(userId: string, purpose: 'email_verificatio
 export function getLatestOtpForUser(userId: string, purpose: 'email_verification' | 'password_reset' = 'email_verification'):
   | { id: string; userId: string; otpHash: string; expiresAt: string; attemptsLeft: number; used: number; cooldownUntil: string; createdAt: string }
   | null {
+  ensureEmailAuthSchema()
   const row = database.prepare(`
     SELECT * FROM email_otp_codes WHERE user_id = ? AND purpose = ? ORDER BY created_at DESC LIMIT 1
   `).get(userId, purpose) as Record<string, unknown> | undefined
@@ -149,10 +219,12 @@ export function getLatestOtpForUser(userId: string, purpose: 'email_verification
 }
 
 export function invalidatePreviousOtpsForUser(userId: string, purpose: 'email_verification' | 'password_reset' = 'email_verification') {
+  ensureEmailAuthSchema()
   database.prepare('UPDATE email_otp_codes SET used = 1, updated_at = ? WHERE user_id = ? AND purpose = ? AND used = 0').run(new Date().toISOString(), userId, purpose)
 }
 
 export function verifyOtpForUser(userId: string, code: string, purpose: 'email_verification' | 'password_reset' = 'email_verification'): { ok: boolean; reason?: 'invalid' | 'expired' | 'attempts_exhausted' | 'used' } {
+  ensureEmailAuthSchema()
   const current = getLatestOtpForUser(userId, purpose)
   if (!current) return { ok: false, reason: 'invalid' }
   if (current.used === 1) return { ok: false, reason: 'used' }
@@ -174,18 +246,21 @@ export function verifyOtpForUser(userId: string, code: string, purpose: 'email_v
 }
 
 export function canRequestOtp(userId: string, purpose: 'email_verification' | 'password_reset' = 'email_verification'): boolean {
+  ensureEmailAuthSchema()
   const current = getLatestOtpForUser(userId, purpose)
   if (!current) return true
   return Date.now() >= new Date(current.cooldownUntil).getTime()
 }
 
 export function getUserOtpCooldownRemainingSeconds(userId: string, purpose: 'email_verification' | 'password_reset' = 'email_verification'): number {
+  ensureEmailAuthSchema()
   const current = getLatestOtpForUser(userId, purpose)
   if (!current) return 0
   return Math.max(0, Math.ceil((new Date(current.cooldownUntil).getTime() - Date.now()) / 1000))
 }
 
 export function upsertPasswordResetUser(userId: string, newPassword: string): EmailAuthUser | null {
+  ensureEmailAuthSchema()
   const passwordError = validatePassword(newPassword)
   if (passwordError) throw new Error(passwordError)
 

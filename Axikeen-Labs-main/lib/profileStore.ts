@@ -29,28 +29,64 @@ const databasePath = process.env.SANESPACE_DATABASE_PATH || path.join(process.cw
 fs.mkdirSync(path.dirname(databasePath), { recursive: true })
 const database = new Database(databasePath)
 
-database.exec(`
-  CREATE TABLE IF NOT EXISTS user_profiles (
-    user_id TEXT PRIMARY KEY,
-    first_name TEXT,
-    last_name TEXT,
-    preferred_name TEXT,
-    country TEXT,
-    city_or_region TEXT,
-    communication_preferences_json TEXT NOT NULL DEFAULT '[]',
-    use_cases_json TEXT NOT NULL DEFAULT '[]',
-    interests_json TEXT NOT NULL DEFAULT '[]',
-    goals_json TEXT NOT NULL DEFAULT '[]',
-    personal_context TEXT,
-    specialisation TEXT,
-    language_profile TEXT,
-    current_mood TEXT,
-    challenges_json TEXT NOT NULL DEFAULT '[]',
-    wellness_goal TEXT,
-    onboarding_complete INTEGER NOT NULL DEFAULT 0,
-    updated_at TEXT NOT NULL
-  );
-`)
+export function addMissingProfileColumns() {
+  const table = database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user_profiles'").get() as { name?: string } | undefined
+  if (!table) {
+    database.exec(`
+      CREATE TABLE user_profiles (
+        user_id TEXT PRIMARY KEY,
+        first_name TEXT,
+        last_name TEXT,
+        preferred_name TEXT,
+        country TEXT,
+        city_or_region TEXT,
+        communication_preferences_json TEXT NOT NULL DEFAULT '[]',
+        use_cases_json TEXT NOT NULL DEFAULT '[]',
+        interests_json TEXT NOT NULL DEFAULT '[]',
+        goals_json TEXT NOT NULL DEFAULT '[]',
+        personal_context TEXT,
+        specialisation TEXT,
+        language_profile TEXT,
+        current_mood TEXT,
+        challenges_json TEXT NOT NULL DEFAULT '[]',
+        wellness_goal TEXT,
+        onboarding_complete INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+      );
+    `)
+    return
+  }
+
+  const columns = database.prepare('PRAGMA table_info(user_profiles)').all() as Array<{ name: string }>
+  const existing = new Set(columns.map((column) => column.name))
+  const definitions: Array<{ name: string; sql: string }> = [
+    { name: 'first_name', sql: 'TEXT' },
+    { name: 'last_name', sql: 'TEXT' },
+    { name: 'preferred_name', sql: 'TEXT' },
+    { name: 'country', sql: 'TEXT' },
+    { name: 'city_or_region', sql: 'TEXT' },
+    { name: 'communication_preferences_json', sql: "TEXT NOT NULL DEFAULT '[]'" },
+    { name: 'use_cases_json', sql: "TEXT NOT NULL DEFAULT '[]'" },
+    { name: 'interests_json', sql: "TEXT NOT NULL DEFAULT '[]'" },
+    { name: 'goals_json', sql: "TEXT NOT NULL DEFAULT '[]'" },
+    { name: 'personal_context', sql: 'TEXT' },
+    { name: 'specialisation', sql: 'TEXT' },
+    { name: 'language_profile', sql: 'TEXT' },
+    { name: 'current_mood', sql: 'TEXT' },
+    { name: 'challenges_json', sql: "TEXT NOT NULL DEFAULT '[]'" },
+    { name: 'wellness_goal', sql: 'TEXT' },
+    { name: 'onboarding_complete', sql: 'INTEGER NOT NULL DEFAULT 0' },
+    { name: 'updated_at', sql: 'TEXT NOT NULL DEFAULT "1970-01-01T00:00:00.000Z"' },
+  ]
+
+  for (const definition of definitions) {
+    if (!existing.has(definition.name)) {
+      database.exec(`ALTER TABLE user_profiles ADD COLUMN ${definition.name} ${definition.sql}`)
+    }
+  }
+}
+
+addMissingProfileColumns()
 
 function parseStringArray(value: unknown): string[] {
   try {
@@ -84,11 +120,13 @@ function rowToProfile(row: Record<string, unknown>): UserProfile {
 }
 
 export function getUserProfile(userId: string): UserProfile | null {
+  addMissingProfileColumns()
   const row = database.prepare('SELECT * FROM user_profiles WHERE user_id = ?').get(userId) as Record<string, unknown> | undefined
   return row ? rowToProfile(row) : null
 }
 
 export function updateUserProfile(userId: string, patch: ProfilePatch): UserProfile {
+  addMissingProfileColumns()
   const current = getUserProfile(userId)
   const next = {
     firstName: patch.firstName ?? current?.firstName ?? null,

@@ -10,8 +10,8 @@ import Button from '@/components/ui/Button'
 import ScrollReveal from '@/components/ui/ScrollReveal'
 import { fadeUp } from '@/lib/animations'
 import type { StoredUserMemory } from '@/lib/memoryExtraction'
-import { LANGUAGE_DEFINITIONS, getLanguageLabel, normalizeLanguageId, resolveLanguagePreference } from '@/lib/languages'
-import { DEFAULT_NOTIFICATION_SETTINGS, loadNotificationSettings, saveNotificationSettings, type NotificationPermissionState } from '@/lib/notificationSettings'
+import { LANGUAGE_DEFINITIONS, getLanguageLabel, resolveLanguagePreference } from '@/lib/languages'
+import { DEFAULT_NOTIFICATION_SETTINGS, loadNotificationSettings, normalizeReminderTime, saveNotificationSettings, type NotificationPermissionState } from '@/lib/notificationSettings'
 import { requestNotificationPermission, supportsBrowserNotifications } from '@/lib/notificationClient'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -42,8 +42,6 @@ const SPEC_KEY_TO_LABEL: Record<string, string> = {
   talk: 'Just to Talk', student: 'Student Support',
   chill: 'Chill / Play', work: 'Work & Career',
 }
-
-const REMINDER_TIMES = ['8:00 AM', '9:00 AM', '12:00 PM', '6:00 PM', '9:00 PM']
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -722,18 +720,15 @@ export default function ProfilePage() {
                     transition={{ duration: 0.25 }}
                     className="overflow-hidden"
                   >
-                    <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                    <div className="mt-4 pt-4 border-t border-border flex items-center justify-between gap-4">
                       <span className="text-sm text-dark font-medium">Reminder Time</span>
-                      <select
-                        value={reminderTime}
+                      <input
+                        type="time"
+                        value={normalizeReminderTime(reminderTime)}
                         onChange={(e) => handleReminderTimeChange(e.target.value)}
                         className="border border-border rounded-xl px-3 py-1.5 text-sm bg-surface
                           focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
-                      >
-                        {REMINDER_TIMES.map((t) => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
+                      />
                     </div>
                   </motion.div>
                 )}

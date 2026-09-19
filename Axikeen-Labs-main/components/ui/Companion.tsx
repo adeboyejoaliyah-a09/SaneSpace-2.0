@@ -267,7 +267,7 @@ export function ChatComposer({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-4xl items-end gap-2 rounded-2xl border border-border bg-[#111118] p-2 shadow-[0_12px_40px_rgba(124,58,237,0.08)]">
+    <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-4xl items-end gap-2 rounded-2xl border border-border bg-[#111118] p-2 shadow-[0_12px_40px_rgba(124,58,237,0.08)] md:p-2">
       <button
         type="button"
         onClick={onVoice}
@@ -286,7 +286,7 @@ export function ChatComposer({
         rows={1}
         disabled={disabled}
         aria-label="Message SaneSpace"
-        className="max-h-36 min-h-11 flex-1 resize-none bg-transparent px-2 py-3 text-sm leading-relaxed text-[#F5F5F7] placeholder:text-[#A7A7B3] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+        className="max-h-36 min-h-[2.75rem] flex-1 resize-none bg-transparent px-2 py-3 text-sm leading-relaxed text-[#F5F5F7] placeholder:text-[#A7A7B3] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
       />
       <button
         type="submit"

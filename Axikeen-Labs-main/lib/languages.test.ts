@@ -1,5 +1,14 @@
-import { describe, expect, it } from 'vitest'
-import { getLanguageCapabilities, getLanguageDefinition, getLanguageLocale, normalizeLanguageId, resolveLanguagePreference } from './languages'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { buildContextBundle } from './ai/context'
+import { adaptResponseForLanguage } from './ai/translation'
+import { LANGUAGE_DEFINITIONS, getLanguageCapabilities, getLanguageDefinition, getLanguageLocale, normalizeLanguageId, resolveLanguagePreference } from './languages'
+
+const message = {
+  id: 'lang-message', conversationId: 'lang-conversation', sender: 'user' as const,
+  content: 'Help me plan my week and keep it realistic.', adaptiveMode: 'listening' as const, timestamp: '2026-09-03T00:00:00.000Z',
+}
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('global language configuration', () => {
   it.each([
@@ -36,5 +45,47 @@ describe('global language configuration', () => {
   it('separates catalog identity from provider and voice capabilities', () => {
     expect(getLanguageCapabilities('Yoruba')).toMatchObject({ languageId: 'yoruba', locale: 'yo-NG', supportedByProvider: 'provider-dependent', supportedByLibreTranslate: true, voiceRecognition: 'best-effort-locale' })
     expect(getLanguageCapabilities('Global English')).toMatchObject({ languageId: 'english', supportedByLibreTranslate: false, culturalContext: 'neutral' })
+  })
+
+  it.each(LANGUAGE_DEFINITIONS)('keeps runtime context aligned for %s', (language) => {
+    const bundle = buildContextBundle({
+      messages: [message],
+      languageProfile: language.label,
+      specialisation: 'Just to Talk',
+    })
+
+    expect(bundle.languageProfile).toBe(language.id)
+    expect(bundle.locale).toBe(language.locale)
+    expect(bundle.userContext).toContain('Personality/specialisation: Just to Talk')
+    expect(bundle.culturalContext).toContain('context')
+
+    if (language.id === 'english') {
+      expect(bundle.culturalContext).toContain('global users')
+      expect(bundle.culturalContext).not.toContain('Nigerian English')
+    }
+
+    if (language.culturalContext === 'nigerian') {
+      expect(bundle.culturalContext).toContain('Nigerian')
+    }
+  })
+
+  it('keeps neutral global English from injecting Nigerian cultural assumptions', () => {
+    const bundle = buildContextBundle({
+      messages: [{ ...message, content: 'Abeg, I need help planning my week without the extra pressure.' }],
+      languageProfile: 'Global English',
+      specialisation: 'Life Coaching',
+    })
+
+    expect(bundle.languageProfile).toBe('english')
+    expect(bundle.culturalContext).toContain('global users')
+    expect(bundle.culturalContext).not.toContain('Nigerian English')
+    expect(bundle.culturalContext).not.toContain('Nigerian Pidgin')
+  })
+
+  it.each(LANGUAGE_DEFINITIONS.filter((language) => language.translationTarget))('uses translation without losing meaning for %s', async (language) => {
+    process.env.LIBRETRANSLATE_BASE_URL = 'https://translate.test/translate'
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ translatedText: 'Translated response' }), { status: 200 })))
+    await expect(adaptResponseForLanguage('I’m with you and I’ll help you plan well.', language.label)).resolves.toBe('Translated response')
+    await expect(adaptResponseForLanguage('I hear you, abeg.', 'Nigerian Pidgin')).resolves.toBe('I hear you, abeg.')
   })
 })

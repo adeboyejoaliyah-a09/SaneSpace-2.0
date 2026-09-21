@@ -1,9 +1,15 @@
 import crypto from 'crypto'
 import { NextResponse } from 'next/server'
 
+function getAppBaseUrl() {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`.replace(/\/$/, '')
+  return 'http://localhost:3000'
+}
+
 export async function GET() {
   const clientId = process.env.GOOGLE_CLIENT_ID
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI ?? 'http://localhost:3000/api/auth/google/callback'
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI ?? `${getAppBaseUrl()}/api/auth/google/callback`
 
   if (!clientId) {
     return NextResponse.json(

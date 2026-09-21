@@ -229,7 +229,7 @@ export default function JournalPage() {
 
     const isEditingExistingEntry = Boolean(selectedEntry && !isCreatingNew && view === 'editor' && selectedEntry.id === selectedId)
 
-    if (isEditingExistingEntry) {
+    if (isEditingExistingEntry && selectedEntry) {
       const updated = entries.map((entry) => entry.id === selectedEntry.id
         ? { ...entry, title, content, mood: normalizedDraft.mood, updatedAt: now }
         : entry)

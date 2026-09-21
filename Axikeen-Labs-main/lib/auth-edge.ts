@@ -7,10 +7,10 @@ export type SessionUser = {
 
 export const AUTH_COOKIE_NAME = 'sanespace_session'
 
-function getAuthSecret(): string {
+function getAuthSecret(): string | null {
   const secret = process.env.AUTH_SECRET
   if (!secret) {
-    throw new Error('AUTH_SECRET is not configured')
+    return null
   }
   return secret
 }
@@ -63,9 +63,14 @@ export async function verifySessionToken(
   if (!encodedPayload || !signature) return null
 
   const secret = getAuthSecret()
-  const expected = await signPayload(encodedPayload, secret)
+  if (!secret) return null
 
-  if (expected !== signature) return null
+  try {
+    const expected = await signPayload(encodedPayload, secret)
+    if (expected !== signature) return null
+  } catch {
+    return null
+  }
 
   try {
     const decoded = JSON.parse(
